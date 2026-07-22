@@ -153,6 +153,148 @@ const htmlContent = `<!DOCTYPE html>
       border-bottom: 1px solid var(--border);
     }
 
+    .search-section {
+      padding: 20px;
+      background: var(--bg-row-alt);
+      border-bottom: 1px solid var(--border);
+    }
+
+    #playerSearch {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 1em;
+      font-family: inherit;
+      background: var(--bg-row);
+      color: var(--text-primary);
+    }
+
+    #playerSearch:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(62, 156, 118, 0.15);
+    }
+
+    .search-results {
+      display: none;
+      padding: 20px;
+    }
+
+    .search-results.active {
+      display: block;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--bg-row);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .card-name {
+      font-weight: 700;
+      font-size: 1.1em;
+      color: var(--text-primary);
+    }
+
+    .card-club {
+      font-size: 0.9em;
+      color: var(--text-secondary);
+    }
+
+    .card-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      font-size: 0.9em;
+    }
+
+    .card-field {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .card-field-label {
+      color: var(--text-secondary);
+      font-size: 0.8em;
+      font-weight: 500;
+    }
+
+    .card-field-value {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .card-field-value.numeric {
+      font-family: 'Courier New', monospace;
+    }
+
+    .card-field-value.positive {
+      color: var(--positive);
+    }
+
+    .card-field-value.negative {
+      color: var(--negative);
+    }
+
+    .card-score-bar {
+      width: 100%;
+      height: 32px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.95em;
+    }
+
+    .card-research-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .card-research-btn {
+      flex: 1;
+      min-width: 70px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      text-decoration: none;
+      color: white;
+      font-weight: 600;
+      font-size: 0.8em;
+      transition: all 0.2s;
+      border: 1px solid var(--accent);
+      background: rgba(62, 156, 118, 0.2);
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .card-research-btn:hover {
+      background: var(--accent);
+      border-color: var(--positive);
+    }
+
     .filter-group {
       display: flex;
       gap: 15px;
@@ -472,6 +614,117 @@ const htmlContent = `<!DOCTYPE html>
       color: var(--text-secondary);
     }
 
+    @media (max-width: 640px) {
+      table {
+        display: none;
+      }
+
+      .mobile-cards {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .mobile-card {
+        background: var(--bg-row);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .mobile-card-header {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 8px;
+      }
+
+      .mobile-card-name {
+        font-weight: 700;
+        font-size: 1em;
+        color: var(--text-primary);
+      }
+
+      .mobile-card-club {
+        font-size: 0.85em;
+        color: var(--text-secondary);
+      }
+
+      .mobile-card-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        font-size: 0.85em;
+      }
+
+      .mobile-card-field {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+
+      .mobile-card-label {
+        color: var(--text-secondary);
+        font-size: 0.75em;
+        font-weight: 500;
+      }
+
+      .mobile-card-value {
+        color: var(--text-primary);
+        font-weight: 500;
+        font-family: 'Courier New', monospace;
+      }
+
+      .mobile-card-value.positive {
+        color: var(--positive);
+      }
+
+      .mobile-card-value.negative {
+        color: var(--negative);
+      }
+
+      .mobile-score-bar {
+        width: 100%;
+        height: 28px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.85em;
+      }
+
+      .mobile-card-buttons {
+        display: flex;
+        gap: 6px;
+      }
+
+      .mobile-card-btn {
+        flex: 1;
+        min-width: 60px;
+        padding: 6px 8px;
+        border-radius: 3px;
+        text-decoration: none;
+        color: white;
+        font-weight: 600;
+        font-size: 0.7em;
+        transition: all 0.2s;
+        border: 1px solid var(--accent);
+        background: rgba(62, 156, 118, 0.2);
+        cursor: pointer;
+        text-align: center;
+      }
+
+      .mobile-card-btn:active {
+        background: var(--accent);
+      }
+    }
+
     @media (max-width: 768px) {
       header h1 {
         font-size: 1.8em;
@@ -555,6 +808,10 @@ const htmlContent = `<!DOCTYPE html>
         padding: 15px;
       }
 
+      .search-section {
+        padding: 15px;
+      }
+
       .tab-content {
         padding: 15px;
       }
@@ -570,6 +827,14 @@ const htmlContent = `<!DOCTYPE html>
       tbody tr {
         height: 36px;
       }
+
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .mobile-card-fields {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -580,6 +845,10 @@ const htmlContent = `<!DOCTYPE html>
       <p>Daten: stats.comunio.de</p>
     </header>
 
+    <div class="search-section">
+      <input type="text" id="playerSearch" placeholder="Spieler suchen …">
+    </div>
+
     <div class="controls">
       <div class="filter-group">
         <label for="budgetFilter">Max. Marktwert (Mio):</label>
@@ -587,7 +856,12 @@ const htmlContent = `<!DOCTYPE html>
       </div>
     </div>
 
-    <div class="tabs">
+    <div id="searchResultsArea" class="search-results">
+      <div id="searchResultsGrid" class="cards-grid"></div>
+    </div>
+
+    <div id="tabsArea">
+      <div class="tabs">
       <button class="tab-button active" data-tab="geheimtipps">GEHEIMTIPPS</button>
       <button class="tab-button" data-tab="momentum">MOMENTUM</button>
       <button class="tab-button" data-tab="value-picks">VALUE-PICKS</button>
@@ -608,6 +882,7 @@ const htmlContent = `<!DOCTYPE html>
         </thead>
         <tbody></tbody>
       </table>
+      <div id="geheimtippsMobileCards"></div>
       <div class="stats-summary" id="geheimtippsStats"></div>
     </div>
 
@@ -634,6 +909,7 @@ const htmlContent = `<!DOCTYPE html>
         </thead>
         <tbody></tbody>
       </table>
+      <div id="momentumMobileCards"></div>
       <div class="stats-summary" id="momentumStats"></div>
     </div>
 
@@ -658,7 +934,9 @@ const htmlContent = `<!DOCTYPE html>
         </thead>
         <tbody></tbody>
       </table>
+      <div id="value-picksMobileCards"></div>
       <div class="stats-summary" id="valueStats"></div>
+    </div>
     </div>
   </div>
 
@@ -764,6 +1042,134 @@ const htmlContent = `<!DOCTYPE html>
       });
       document.getElementById('periodSelector').addEventListener('change', renderMomentumTable);
       document.getElementById('keeperToggle').addEventListener('change', renderValueTable);
+      document.getElementById('playerSearch').addEventListener('input', handleSearch);
+    }
+
+    function handleSearch() {
+      var query = document.getElementById('playerSearch').value.toLowerCase().trim();
+      var searchArea = document.getElementById('searchResultsArea');
+      var tabsArea = document.getElementById('tabsArea');
+
+      if (query.length === 0) {
+        searchArea.classList.remove('active');
+        tabsArea.style.display = 'block';
+        return;
+      }
+
+      var results = window.PLAYERS.filter(function(p) {
+        return p.spieler.toLowerCase().indexOf(query) !== -1;
+      });
+
+      renderDetailCards(results);
+      searchArea.classList.add('active');
+      tabsArea.style.display = 'none';
+    }
+
+    function renderDetailCards(players) {
+      var grid = document.getElementById('searchResultsGrid');
+      grid.innerHTML = '';
+
+      if (players.length === 0) {
+        var emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-state';
+        emptyDiv.textContent = 'Keine Spieler gefunden';
+        emptyDiv.style.gridColumn = '1 / -1';
+        emptyDiv.style.padding = '40px 20px';
+        grid.appendChild(emptyDiv);
+        return;
+      }
+
+      players.forEach(function(p) {
+        var card = document.createElement('div');
+        card.className = 'card';
+
+        var header = document.createElement('div');
+        header.className = 'card-header';
+        var name = document.createElement('div');
+        name.className = 'card-name';
+        name.textContent = p.spieler;
+        var club = document.createElement('div');
+        club.className = 'card-club';
+        club.textContent = p.club;
+        header.appendChild(name);
+        header.appendChild(club);
+        card.appendChild(header);
+
+        var fields = document.createElement('div');
+        fields.className = 'card-fields';
+
+        fields.appendChild(createCardField('Marktwert', formatMarktwert(p.marktwert)));
+        fields.appendChild(createCardField('Punkte', String(p.punkte !== undefined && p.punkte !== null ? p.punkte : 'N/A')));
+        fields.appendChild(createCardField('Einsätze', String(p.einsaetze || 'N/A')));
+        fields.appendChild(createCardField('Punkte/Spiel', p.punkteProSpiel !== null ? p.punkteProSpiel.toFixed(2).replace('.', ',') : 'N/A'));
+        fields.appendChild(createCardField('Punkte/Mio', p.punkteProMio !== null ? p.punkteProMio.toFixed(1).replace('.', ',') : 'N/A'));
+
+        if (p.veraenderung) {
+          var vortag = p.veraenderung.vortag;
+          var vorwoche = p.veraenderung.vorwoche;
+          var vormonat = p.veraenderung.vormonat;
+          if (vortag) {
+            var vtagVal = createTrendDisplay(vortag.prozent);
+            fields.appendChild(createCardField('Trend Vortag', vtagVal.text, vtagVal.className));
+          }
+          if (vorwoche) {
+            var vwoVal = createTrendDisplay(vorwoche.prozent);
+            fields.appendChild(createCardField('Trend Vorwoche', vwoVal.text, vwoVal.className));
+          }
+          if (vormonat) {
+            var vmoVal = createTrendDisplay(vormonat.prozent);
+            fields.appendChild(createCardField('Trend Vormonat', vmoVal.text, vmoVal.className));
+          }
+        }
+
+        if (p.geheimtippScore !== null) {
+          fields.appendChild(createCardField('Score', String(p.geheimtippScore.toFixed(1))));
+        }
+
+        fields.appendChild(createCardField('Torhüter', String(p.istTorhueter ? 'Ja' : 'Nein')));
+
+        card.appendChild(fields);
+
+        if (p.geheimtippScore !== null) {
+          var scoreBar = document.createElement('div');
+          scoreBar.className = 'card-score-bar ' + getScoreBarClass(p.geheimtippScore);
+          scoreBar.textContent = 'Score ' + p.geheimtippScore.toFixed(1);
+          card.appendChild(scoreBar);
+        }
+
+        var buttons = document.createElement('div');
+        buttons.className = 'card-research-buttons';
+        buttons.innerHTML = createResearchButtons(p.spieler, p.club);
+        card.appendChild(buttons);
+
+        grid.appendChild(card);
+      });
+    }
+
+    function createCardField(label, value, className) {
+      var div = document.createElement('div');
+      div.className = 'card-field';
+      var labelEl = document.createElement('div');
+      labelEl.className = 'card-field-label';
+      labelEl.textContent = label;
+      var valueEl = document.createElement('div');
+      valueEl.className = 'card-field-value';
+      if (className) valueEl.classList.add(className);
+      if (typeof value === 'string') {
+        valueEl.textContent = value;
+      } else {
+        valueEl.appendChild(value);
+      }
+      div.appendChild(labelEl);
+      div.appendChild(valueEl);
+      return div;
+    }
+
+    function createTrendDisplay(percent) {
+      if (percent === null) return { text: 'N/A', className: 'neutral' };
+      var sign = percent >= 0 ? '+' : '';
+      var className = percent > 0 ? 'positive' : (percent < 0 ? 'negative' : 'neutral');
+      return { text: sign + percent + '%', className: className };
     }
 
     function getBudgetLimit() {
@@ -942,9 +1348,96 @@ const htmlContent = `<!DOCTYPE html>
         tr.appendChild(td7);
         tbody.appendChild(tr);
       });
+      renderMobileCards('geheimtipps', filtered);
       setupTableSorting('geheimtippsTable', renderGeheimtippsTable);
       var total = window.PLAYERS.filter(function(p) { return p.geheimtippScore !== null; }).length;
       document.getElementById('geheimtippsStats').textContent = 'Zeige ' + filtered.length + ' von ' + total + ' Geheimtipps';
+    }
+
+    function renderMobileCards(viewType, players) {
+      var mobileContainer = document.getElementById(viewType + 'MobileCards');
+      if (!mobileContainer) return;
+      mobileContainer.innerHTML = '';
+
+      if (players.length === 0) return;
+
+      var grid = document.createElement('div');
+      grid.className = 'mobile-cards';
+
+      players.forEach(function(p) {
+        var card = document.createElement('div');
+        card.className = 'mobile-card';
+
+        var header = document.createElement('div');
+        header.className = 'mobile-card-header';
+        var name = document.createElement('div');
+        name.className = 'mobile-card-name';
+        name.textContent = p.spieler;
+        var club = document.createElement('div');
+        club.className = 'mobile-card-club';
+        club.textContent = p.club;
+        header.appendChild(name);
+        header.appendChild(club);
+        card.appendChild(header);
+
+        var fields = document.createElement('div');
+        fields.className = 'mobile-card-fields';
+
+        if (viewType === 'geheimtipps') {
+          addMobileField(fields, 'Score', p.geheimtippScore.toFixed(1), 'numeric');
+          addMobileField(fields, 'Marktwert', formatMarktwert(p.marktwert), 'numeric');
+          addMobileField(fields, 'Punkte/Mio', p.punkteProMio !== null ? p.punkteProMio.toFixed(1).replace('.', ',') : 'N/A', 'numeric');
+          var trend = p.usedTrend === 'vorwoche' ? (p.veraenderung.vorwoche ? p.veraenderung.vorwoche.prozent : 0) : (p.veraenderung.vortag ? p.veraenderung.vortag.prozent : 0);
+          var trendClass = trend > 0 ? 'positive' : 'neutral';
+          addMobileField(fields, 'Woche %', trend >= 0 ? '+' + trend + '%' : trend + '%', trendClass);
+        } else if (viewType === 'momentum') {
+          var period = getPeriod();
+          var change = p.veraenderung[period];
+          addMobileField(fields, 'Marktwert', formatMarktwert(p.marktwert), 'numeric');
+          var changeClass = change.abs > 0 ? 'positive' : (change.abs < 0 ? 'negative' : 'neutral');
+          addMobileField(fields, 'Veränderung (abs)', formatChange(change.abs, null), changeClass);
+          addMobileField(fields, 'Veränderung (%)', change.prozent !== null ? (change.prozent >= 0 ? '+' : '') + change.prozent + '%' : 'N/A', changeClass);
+        } else if (viewType === 'value-picks') {
+          addMobileField(fields, 'Marktwert', formatMarktwert(p.marktwert), 'numeric');
+          addMobileField(fields, 'Punkte/Mio', p.punkteProMio !== null ? p.punkteProMio.toFixed(1).replace('.', ',') : 'N/A', 'numeric');
+          addMobileField(fields, 'Punkte/Spiel', p.punkteProSpiel !== null ? p.punkteProSpiel.toFixed(2).replace('.', ',') : 'N/A', 'numeric');
+          addMobileField(fields, 'Punkte', p.punkte, 'numeric');
+        }
+
+        card.appendChild(fields);
+
+        if (p.geheimtippScore !== null && viewType === 'geheimtipps') {
+          var scoreBar = document.createElement('div');
+          scoreBar.className = 'mobile-score-bar ' + getScoreBarClass(p.geheimtippScore);
+          scoreBar.textContent = p.geheimtippScore.toFixed(1);
+          card.appendChild(scoreBar);
+        }
+
+        var buttons = document.createElement('div');
+        buttons.className = 'mobile-card-buttons';
+        var researchHTML = createResearchButtons(p.spieler, p.club);
+        buttons.innerHTML = researchHTML.replace('research-buttons', 'mobile-card-buttons').replace(/research-btn/g, 'mobile-card-btn');
+        card.appendChild(buttons);
+
+        grid.appendChild(card);
+      });
+
+      mobileContainer.appendChild(grid);
+    }
+
+    function addMobileField(container, label, value, className) {
+      var field = document.createElement('div');
+      field.className = 'mobile-card-field';
+      var labelEl = document.createElement('div');
+      labelEl.className = 'mobile-card-label';
+      labelEl.textContent = label;
+      var valueEl = document.createElement('div');
+      valueEl.className = 'mobile-card-value';
+      if (className) valueEl.classList.add(className);
+      valueEl.textContent = value;
+      field.appendChild(labelEl);
+      field.appendChild(valueEl);
+      container.appendChild(field);
     }
 
     function renderMomentumTable() {
@@ -1036,6 +1529,7 @@ const htmlContent = `<!DOCTYPE html>
         tr.appendChild(td7);
         tbody.appendChild(tr);
       });
+      renderMobileCards('momentum', filtered);
       setupTableSorting('momentumTable', renderMomentumTable);
       var totalWithPeriod = window.PLAYERS.filter(function(p) { return p.veraenderung && p.veraenderung[period]; }).length;
       document.getElementById('momentumStats').textContent = 'Zeige ' + filtered.length + ' von ' + totalWithPeriod + ' Spielern mit Daten für ' + period;
@@ -1135,6 +1629,7 @@ const htmlContent = `<!DOCTYPE html>
         tr.appendChild(td8);
         tbody.appendChild(tr);
       });
+      renderMobileCards('value-picks', filtered);
       setupTableSorting('valueTable', renderValueTable);
       var totalWithPoints = window.PLAYERS.filter(function(p) { return p.punkte; }).length;
       document.getElementById('valueStats').textContent = 'Zeige ' + filtered.length + ' von ' + totalWithPoints + ' Spielern mit Punkten';
