@@ -12,6 +12,9 @@ __pycache__/
 # Generierte / gescrapte Daten (werden vom Scraper frisch erzeugt)
 data/
 
+# Generierte Dashboard (wird vom Build-Script frisch erzeugt)
+dashboard/index.html
+
 # System
 .DS_Store
 *.log

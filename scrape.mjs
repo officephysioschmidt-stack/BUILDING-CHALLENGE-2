@@ -38,6 +38,62 @@ function delay(ms) {
 }
 
 /**
+ * Scrape Goalkeeper points list (Top 25)
+ */
+async function scrapeGoalkeepers() {
+  const url = 'https://stats.comunio.de/toplist/pts_gk_25-Top25_Punkte_Torhueter';
+  console.log(`📥 Fetching ${url}...`);
+
+  const response = await fetch(url, {
+    headers: { 'User-Agent': USER_AGENT },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  const html = await response.text();
+  console.log('✓ Page loaded\n');
+
+  const $ = load(html);
+  const goalkeepers = new Set();
+
+  const table = $('table.playersTable').first();
+  if (!table.length) {
+    console.log('⚠ Goalkeeper table not found, continuing without GK flag');
+    return goalkeepers;
+  }
+
+  let headerRow = true;
+  let count = 0;
+
+  table.find('tr').each((rowIdx, row) => {
+    if (headerRow) {
+      headerRow = false;
+      return;
+    }
+
+    const $row = $(row);
+    const tds = $row.find('td');
+    if (tds.length < 4) return;
+
+    // Same structure as points page: Rang | Icon | Player | Club | ...
+    const playerName = $(tds.eq(2)).find('a.playerName').text().trim();
+    const clubImg = $(tds.eq(3)).find('img');
+    const club = clubImg.attr('alt') || '';
+
+    if (!playerName || !club) return;
+
+    const key = normalizeKey(playerName, club);
+    goalkeepers.add(key);
+    count++;
+  });
+
+  console.log(`✓ Goalkeepers: ${count} entries scraped\n`);
+  return goalkeepers;
+}
+
+/**
  * Scrape Gewinner/Verlierer page (all time periods in single HTML)
  */
 async function scrapeWinnerLoser() {
@@ -230,7 +286,7 @@ async function scrapePointsTop100() {
 /**
  * Consolidate player data
  */
-function consolidatePlayers(winnerLoserData, pointsData) {
+function consolidatePlayers(winnerLoserData, pointsData, goalkeepers) {
   const consolidated = { ...winnerLoserData };
   let pointsMatched = 0;
   const unmatchedPoints = [];
@@ -241,6 +297,7 @@ function consolidatePlayers(winnerLoserData, pointsData) {
     player.einsaetze = null;
     player.tore = null;
     player.punkteProSpiel = null;
+    player.istTorhueter = false; // Will be set to true if in goalkeeper list
   }
 
   // Merge points data
@@ -279,11 +336,22 @@ function consolidatePlayers(winnerLoserData, pointsData) {
     }
   }
 
+  // Mark goalkeepers
+  let gkCount = 0;
+  for (const [key, player] of Object.entries(consolidated)) {
+    if (goalkeepers.has(key)) {
+      player.istTorhueter = true;
+      gkCount++;
+    }
+  }
+
   return {
     players: consolidated,
     stats: {
       totalWinnerLoser: Object.keys(winnerLoserData).length,
       totalPoints: Object.keys(pointsData).length,
+      totalGoalkeepers: goalkeepers.size,
+      goalkeeperMatches: gkCount,
       pointsMatched,
       pointsUnmatched: unmatchedPoints,
       consolidated: Object.keys(consolidated).length,
@@ -299,15 +367,18 @@ async function main() {
     console.log('🚀 Starting Comunio Scraper\n');
     console.log('=' .repeat(80) + '\n');
 
-    // Scrape both sources
+    // Scrape all sources
     const winnerLoserData = await scrapeWinnerLoser();
     await delay(800); // Friendly delay
 
     const pointsData = await scrapePointsTop100();
     await delay(800);
 
+    const goalkeepers = await scrapeGoalkeepers();
+    await delay(800);
+
     // Consolidate
-    const { players, stats } = consolidatePlayers(winnerLoserData, pointsData);
+    const { players, stats } = consolidatePlayers(winnerLoserData, pointsData, goalkeepers);
 
     // Create data directory if needed
     if (!fs.existsSync('data')) {
@@ -325,6 +396,8 @@ async function main() {
     console.log('📊 Statistics:');
     console.log(`  Winner/Loser entries: ${stats.totalWinnerLoser}`);
     console.log(`  Points entries: ${stats.totalPoints}`);
+    console.log(`  Goalkeeper entries: ${stats.totalGoalkeepers}`);
+    console.log(`  Goalkeepers matched: ${stats.goalkeeperMatches}`);
     console.log(`  Points matched to Winner/Loser: ${stats.pointsMatched}`);
     console.log(`  Points unmatched: ${stats.pointsUnmatched.length}`);
     console.log(`  Total consolidated records: ${stats.consolidated}`);
