@@ -1,7 +1,6 @@
 import fs from 'fs';
 import { load } from 'cheerio';
 
-const URL = 'https://stats.comunio.de/toplist/pt-Gewinner_Verlierer';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 /**
@@ -10,139 +9,346 @@ const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
  */
 function parseGermanNumber(str) {
   if (!str) return null;
-  // Remove leading/trailing whitespace and special chars
   let clean = str.trim();
-
-  // Handle percentage sign
   clean = clean.replace('%', '').trim();
 
-  // Handle leading + or -
   const isNegative = clean.startsWith('-');
   const sign = isNegative ? -1 : 1;
   clean = clean.replace(/^[+-\s]+/, '').trim();
 
-  // German format: point = thousands separator, comma = decimal separator
-  // Replace points (thousands) with nothing, comma (decimal) with point
   const withDecimal = clean.replace(/\./g, '').replace(',', '.');
-
   const num = parseFloat(withDecimal);
   return isNaN(num) ? null : num * sign;
 }
 
 /**
- * Extract club name from HTML.
- * The club name is in the alt text of the club icon img tag.
+ * Normalize player key for joining: lowercase name + club
  */
-function extractClubName(clubTd, $) {
-  const img = $(clubTd).find('img');
-  const altText = img.attr('alt');
-  return altText || '';
+function normalizeKey(playerName, club) {
+  const nameParts = playerName.toLowerCase().split(' ');
+  const lastName = nameParts[nameParts.length - 1];
+  return `${lastName}|${club.toLowerCase()}`;
 }
 
 /**
- * Extract player name from HTML.
+ * Delay for friendly scraping
  */
-function extractPlayerName(playerTd, $) {
-  const link = $(playerTd).find('a.playerName');
-  return link.text().trim();
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
- * Extract market value from a td containing span.abbr > span.
- */
-function extractValue(td, $) {
-  const span = $(td).find('span > span');
-  return span.text().trim();
-}
-
-/**
- * Main scraper function.
+ * Scrape Gewinner/Verlierer page (all time periods in single HTML)
  */
 async function scrapeWinnerLoser() {
-  try {
-    console.log(`📥 Fetching ${URL}...`);
-    const response = await fetch(URL, {
-      headers: {
-        'User-Agent': USER_AGENT,
-      },
-    });
+  const url = 'https://stats.comunio.de/toplist/pt-Gewinner_Verlierer';
+  console.log(`📥 Fetching ${url}...`);
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+  const response = await fetch(url, {
+    headers: { 'User-Agent': USER_AGENT },
+  });
 
-    const html = await response.text();
-    console.log('✓ Page loaded successfully\n');
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
 
-    const $ = load(html);
+  const html = await response.text();
+  console.log('✓ Page loaded\n');
 
-    // Find the main players table with class 'playersTable'
-    const playersTable = $('table.playersTable.rangliste').first();
-    if (!playersTable.length) {
-      throw new Error('Could not find players table on page');
-    }
+  const $ = load(html);
+  const players = {};
+  const stats = { total: 0, matched: 0, unmatched: [] };
 
-    const players = [];
+  // Find all tables
+  const tables = $('table.playersTable');
+  console.log(`Found ${tables.length} tables (expecting 6: 2 categories × 3 periods)\n`);
+
+  // Map: table index → [category, period]
+  // Tables 0,2,4 = Winners (Vortag, Vorwoche, Vormonat)
+  // Tables 1,3,5 = Losers (Vortag, Vorwoche, Vormonat)
+  const tableMeta = [
+    { category: 'gewinner', period: 'vortag' },
+    { category: 'verlierer', period: 'vortag' },
+    { category: 'gewinner', period: 'vorwoche' },
+    { category: 'verlierer', period: 'vorwoche' },
+    { category: 'gewinner', period: 'vormonat' },
+    { category: 'verlierer', period: 'vormonat' },
+  ];
+
+  tables.each((tableIdx, tableElem) => {
+    const meta = tableMeta[tableIdx];
+    if (!meta) return;
+
+    const $table = $(tableElem);
     let headerRow = true;
 
-    playersTable.find('tr').each((index, row) => {
+    $table.find('tr').each((rowIdx, row) => {
       if (headerRow) {
         headerRow = false;
-        return; // Skip header row
+        return; // Skip header
       }
 
-      const tds = $(row).find('td');
-      if (tds.length < 5) return; // Skip incomplete rows
+      const $row = $(row);
+      const tds = $row.find('td');
+      if (tds.length < 5) return; // Need: Player, Club, Marktwert, Change Abs, Change %
 
-      const playerName = extractPlayerName(tds.eq(0), $);
-      const club = extractClubName(tds.eq(1), $);
-      const marketValueStr = extractValue(tds.eq(2), $);
-      const changeAbsStr = extractValue(tds.eq(3), $);
+      // Extract data
+      const playerName = $(tds.eq(0)).find('a.playerName').text().trim();
+      const clubImg = $(tds.eq(1)).find('img');
+      const club = clubImg.attr('alt') || '';
+      const marketValueStr = $(tds.eq(2)).find('span > span').text().trim();
+      const changeAbsStr = $(tds.eq(3)).text().trim();
       const changePercentStr = $(tds.eq(4)).text().trim();
+
+      if (!playerName || !club) return;
 
       const marketValue = parseGermanNumber(marketValueStr);
       const changeAbsolute = parseGermanNumber(changeAbsStr);
       const changePercent = parseGermanNumber(changePercentStr);
 
-      if (playerName && marketValue !== null) {
-        players.push({
+      // Extract trend/tendenz icon
+      const trendImg = $(tds.eq(0)).find('img[alt*="steigend"], img[alt*="fallend"], img[alt*="aufsteigend"], img[alt*="absteigend"], img[alt*="trend"]');
+      const tendenz = trendImg.attr('alt') || null;
+
+      // Create or update player record
+      const key = normalizeKey(playerName, club);
+      if (!players[key]) {
+        players[key] = {
           spieler: playerName,
           club: club,
           marktwert: marketValue,
-          veraenderungAbsolut: changeAbsolute,
-          veraenderungProzent: changePercent,
-        });
+          punkte: null,
+          veraenderung: {},
+          tendenz: tendenz,
+        };
       }
+
+      // Add change data for this period
+      if (!players[key].veraenderung[meta.period]) {
+        players[key].veraenderung[meta.period] = {};
+      }
+      players[key].veraenderung[meta.period].abs = changeAbsolute;
+      players[key].veraenderung[meta.period].prozent = changePercent;
+
+      // Update tendenz if found
+      if (tendenz && !players[key].tendenz) {
+        players[key].tendenz = tendenz;
+      }
+
+      stats.total++;
     });
 
-    if (players.length === 0) {
-      throw new Error('No players found in table');
+    console.log(`✓ Table ${tableIdx} (${meta.category} ${meta.period}): processed`);
+  });
+
+  console.log(`\n✓ Gewinner/Verlierer: ${stats.total} entries scraped`);
+  return players;
+}
+
+/**
+ * Scrape Points Top 100 page
+ */
+async function scrapePointsTop100() {
+  const url = 'https://stats.comunio.de/toplist/pts_ovr_100-Top100_Punkte_Spieler';
+  console.log(`\n📥 Fetching ${url}...`);
+
+  const response = await fetch(url, {
+    headers: { 'User-Agent': USER_AGENT },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  const html = await response.text();
+  console.log('✓ Page loaded\n');
+
+  const $ = load(html);
+  const pointsData = {};
+
+  const table = $('table.playersTable').first();
+  if (!table.length) {
+    throw new Error('Points table not found');
+  }
+
+  let headerRow = true;
+  let count = 0;
+
+  table.find('tr').each((rowIdx, row) => {
+    if (headerRow) {
+      headerRow = false;
+      return;
     }
 
-    console.log(`✓ Scraped ${players.length} players\n`);
-    console.log('📊 First 10 players:');
-    console.log('─'.repeat(120));
-    players.slice(0, 10).forEach((p, i) => {
-      console.log(
-        `${i + 1}. ${p.spieler.padEnd(20)} | ${p.club.padEnd(30)} | ` +
-        `Marktwert: ${p.marktwert.toLocaleString('de-DE')} | ` +
-        `Änderung: ${p.veraenderungAbsolut !== null ? p.veraenderungAbsolut.toLocaleString('de-DE') : 'N/A'} ` +
-        `(${p.veraenderungProzent !== null ? p.veraenderungProzent + '%' : 'N/A'})`
-      );
-    });
-    console.log('─'.repeat(120) + '\n');
+    const $row = $(row);
+    const tds = $row.find('td');
+    if (tds.length < 9) return;
 
-    // Create data directory if it doesn't exist
+    // Table structure: Rang | Icon | Player | Club | Marktwert | Einsätze(bewertet) | Tore | Punkte | Punkte pro Spiel
+    const playerName = $(tds.eq(2)).find('a.playerName').text().trim();
+    const clubImg = $(tds.eq(3)).find('img');
+    const club = clubImg.attr('alt') || '';
+    const marktwertStr = $(tds.eq(4)).find('span > span').text().trim();
+    const einsaetzeStr = $(tds.eq(5)).text().trim();
+    const toreStr = $(tds.eq(6)).text().trim();
+    const punkteStr = $(tds.eq(7)).text().trim();
+    const punkteProSpielStr = $(tds.eq(8)).text().trim();
+
+    if (!playerName || !club || !punkteStr) return;
+
+    const marktwert = parseGermanNumber(marktwertStr);
+    const punkte = parseGermanNumber(punkteStr);
+    const punkteProSpiel = parseGermanNumber(punkteProSpielStr);
+
+    if (punkte === null) return;
+
+    // Extract numeric values from "31 (31)" format
+    const einsaetzeMatch = einsaetzeStr.match(/(\d+)/);
+    const einsaetze = einsaetzeMatch ? parseInt(einsaetzeMatch[1]) : null;
+
+    const toreMatch = toreStr.match(/(\d+)/);
+    const tore = toreMatch ? parseInt(toreMatch[1]) : null;
+
+    const key = normalizeKey(playerName, club);
+    pointsData[key] = {
+      spieler: playerName,
+      club: club,
+      marktwert: marktwert,
+      punkte: punkte,
+      einsaetze: einsaetze,
+      tore: tore,
+      punkteProSpiel: punkteProSpiel,
+    };
+
+    count++;
+  });
+
+  console.log(`✓ Points Top 100: ${count} entries scraped\n`);
+  return pointsData;
+}
+
+/**
+ * Consolidate player data
+ */
+function consolidatePlayers(winnerLoserData, pointsData) {
+  const consolidated = { ...winnerLoserData };
+  let pointsMatched = 0;
+  const unmatchedPoints = [];
+
+  // Initialize all players with points-related fields (null by default)
+  for (const player of Object.values(consolidated)) {
+    player.punkte = null;
+    player.einsaetze = null;
+    player.tore = null;
+    player.punkteProSpiel = null;
+  }
+
+  // Merge points data
+  for (const [key, pointsEntry] of Object.entries(pointsData)) {
+    if (consolidated[key]) {
+      // Player exists in Winner/Loser data, merge points info
+      consolidated[key].punkte = pointsEntry.punkte;
+      consolidated[key].einsaetze = pointsEntry.einsaetze;
+      consolidated[key].tore = pointsEntry.tore;
+      consolidated[key].punkteProSpiel = pointsEntry.punkteProSpiel;
+      pointsMatched++;
+    } else {
+      // New player from Points list only
+      consolidated[key] = {
+        spieler: pointsEntry.spieler,
+        club: pointsEntry.club,
+        marktwert: pointsEntry.marktwert,
+        punkte: pointsEntry.punkte,
+        einsaetze: pointsEntry.einsaetze,
+        tore: pointsEntry.tore,
+        punkteProSpiel: pointsEntry.punkteProSpiel,
+        veraenderung: {},
+        tendenz: null,
+      };
+      unmatchedPoints.push(key);
+    }
+  }
+
+  // Calculate punkteProMio for all players with both values
+  for (const player of Object.values(consolidated)) {
+    if (player.punkte !== null && player.marktwert !== null && player.marktwert > 0) {
+      const mio = player.marktwert / 1_000_000;
+      player.punkteProMio = Math.round((player.punkte / mio) * 10) / 10;
+    } else {
+      player.punkteProMio = null;
+    }
+  }
+
+  return {
+    players: consolidated,
+    stats: {
+      totalWinnerLoser: Object.keys(winnerLoserData).length,
+      totalPoints: Object.keys(pointsData).length,
+      pointsMatched,
+      pointsUnmatched: unmatchedPoints,
+      consolidated: Object.keys(consolidated).length,
+    },
+  };
+}
+
+/**
+ * Main function
+ */
+async function main() {
+  try {
+    console.log('🚀 Starting Comunio Scraper\n');
+    console.log('=' .repeat(80) + '\n');
+
+    // Scrape both sources
+    const winnerLoserData = await scrapeWinnerLoser();
+    await delay(800); // Friendly delay
+
+    const pointsData = await scrapePointsTop100();
+    await delay(800);
+
+    // Consolidate
+    const { players, stats } = consolidatePlayers(winnerLoserData, pointsData);
+
+    // Create data directory if needed
     if (!fs.existsSync('data')) {
       fs.mkdirSync('data');
     }
 
-    // Save to JSON file
+    // Save consolidated data
     fs.writeFileSync(
-      'data/gewinner-verlierer.json',
-      JSON.stringify(players, null, 2)
+      'data/players.json',
+      JSON.stringify(Object.values(players), null, 2)
     );
-    console.log('💾 Saved to data/gewinner-verlierer.json');
+
+    console.log('\n' + '='.repeat(80));
+    console.log('✓ Consolidation Complete\n');
+    console.log('📊 Statistics:');
+    console.log(`  Winner/Loser entries: ${stats.totalWinnerLoser}`);
+    console.log(`  Points entries: ${stats.totalPoints}`);
+    console.log(`  Points matched to Winner/Loser: ${stats.pointsMatched}`);
+    console.log(`  Points unmatched: ${stats.pointsUnmatched.length}`);
+    console.log(`  Total consolidated records: ${stats.consolidated}`);
+
+    if (stats.pointsUnmatched.length > 0) {
+      console.log(`\n  ⚠ Unmatched Points entries (first 5):`);
+      stats.pointsUnmatched.slice(0, 5).forEach(key => {
+        const p = pointsData[key];
+        console.log(`    - ${p.spieler} (${p.club})`);
+      });
+    }
+
+    // Show sample output
+    console.log('\n📋 Sample Output (first 5 records):\n');
+    const samplePlayers = Object.values(players).slice(0, 5);
+    samplePlayers.forEach((p, i) => {
+      console.log(`${i + 1}. ${p.spieler.padEnd(20)} | ${p.club.padEnd(25)} | MW: ${p.marktwert?.toLocaleString('de-DE') || 'N/A'}`);
+      if (p.punkte !== null) {
+        console.log(`   Punkte: ${p.punkte}, PpM: ${p.punkteProMio}, Tendenz: ${p.tendenz || 'keine'}`);
+      }
+      console.log();
+    });
+
+    console.log(`✓ Saved to data/players.json`);
 
   } catch (error) {
     console.error('❌ Error:', error.message);
@@ -150,4 +356,4 @@ async function scrapeWinnerLoser() {
   }
 }
 
-scrapeWinnerLoser();
+main();
