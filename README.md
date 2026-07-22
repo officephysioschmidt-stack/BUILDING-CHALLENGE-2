@@ -1,4 +1,4 @@
-# SKAILE Building Challenge
+# Comunio-Scout
 
 > Diese Datei füllst du im Laufe der Challenge aus. Die Platzhalter in eckigen
 > Klammern ersetzt du durch deine Inhalte — dein Claude Code hilft dir dabei
@@ -6,19 +6,24 @@
 
 ## Das Problem
 
-[1-2 Sätze: Wessen Problem löst dein Agent? Was kostet das Problem heute an
-Zeit, Geld oder Nerven?]
+Als Comunio-Spieler (Bundesliga-Managerspiel) muss man in der Anfangsphase sein
+Startbudget von ~40–50 Mio durch clevere Transfers vergrößern: Spieler kaufen, deren
+Marktwert steigt, und teurer wieder verkaufen. Herauszufinden, welche Spieler gerade im
+Wert anziehen, kostet manuell viel Zeit — man vergleicht Marktwerte, Trends und
+Tendenzen mühsam über mehrere Seiten.
 
 ## Was der Agent macht
 
-[2-3 Sätze: Input rein → was passiert → Ergebnis raus. Einfach erklärt, so
-dass es jemand ohne Technik-Hintergrund versteht.]
+Der Agent liest automatisch die öffentlichen Comunio-Statistiken aus (Marktwerte,
+Punkte, Marktwert-Tendenzen). Er erkennt, welche Spieler im Wert steigen oder fallen und
+welche viel Punkte pro Mio Marktwert bringen. Das Ergebnis ist ein sortierbares
+Dashboard mit Kauf- und Verkaufs-Kandidaten, gefiltert nach meinem Budget.
 
 ## Stack
 
-- [ ] Claude Code (Agent / Skills)
+- [x] Claude Code (Agent / Skills)
 - [ ] n8n
-- [ ] Sonstiges: [was?]
+- [x] Sonstiges: Python + BeautifulSoup (Scraping), Vanilla HTML/JS (Dashboard), Cloudflare Pages (Hosting)
 
 ## Setup
 
@@ -39,4 +44,4 @@ ist neu dazugekommen?]
 
 **Demo-Video:** [Link zu Loom oder YouTube unlisted — EIN Durchlauf, ungeschnitten]
 
-*SKAILE Academy Building Challenge — [Monat/Jahr]*
+*SKAILE Academy Building Challenge — Juli 2026*
