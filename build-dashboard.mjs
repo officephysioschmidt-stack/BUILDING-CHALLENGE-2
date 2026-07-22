@@ -3,7 +3,32 @@ import fs from 'fs';
 // Read players data
 let players = JSON.parse(fs.readFileSync('data/players.json', 'utf-8'));
 
-// Calculate Geheimtipp-Score for each player
+// Club name to short code mapping for Transfermarkt precision links
+const CLUB_SHORT_CODES = {
+  '1. FC Heidenheim': 'Heidenheim',
+  '1. FC Köln': 'Köln',
+  '1. FC Union Berlin': 'Union',
+  '1. FSV Mainz 05': 'Mainz',
+  'Bayer 04 Leverkusen': 'Leverkusen',
+  'Borussia Dortmund': 'Dortmund',
+  'Borussia M\'gladbach': 'Gladbach',
+  'Eintracht Frankfurt': 'Frankfurt',
+  'FC Augsburg': 'Augsburg',
+  'FC Bayern München': 'Bayern',
+  'FC Schalke 04': 'Schalke',
+  'FC St. Pauli': 'Pauli',
+  'Hamburger SV': 'Hamburg',
+  'RB Leipzig': 'Leipzig',
+  'SC Paderborn': 'Paderborn',
+  'SV Elversberg': 'Elversberg',
+  'SV Werder Bremen': 'Bremen',
+  'Sport-Club Freiburg': 'Freiburg',
+  'TSG Hoffenheim': 'Hoffenheim',
+  'VfB Stuttgart': 'Stuttgart',
+  'VfL Wolfsburg': 'Wolfsburg',
+};
+
+// Calculate Geheimtipp-Score
 function calculateGeheimtippScore(playersData) {
   const qualifying = playersData.filter(p => {
     if (p.punkteProMio === null || p.istTorhueter) return false;
@@ -50,14 +75,31 @@ function calculateGeheimtippScore(playersData) {
 
 calculateGeheimtippScore(players);
 
-// PART A: Dark Forest Green Theme + PART B: Mobile Nav + PART C: Two News Sources
-const htmlHead = `<!DOCTYPE html>
+// PART A: Subdued emerald dark palette as CSS variables
+// PART B: Modernized layout, typography, sticky headers
+// PART C: Info tooltips with desktop hover & mobile tap
+// PART D: Four research link sources (News, TM, Kicker, Ligainsider)
+const htmlContent = `<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Comunio-Scout</title>
   <style>
+    :root {
+      --bg-page: #0B0E0D;
+      --bg-panel: #141A18;
+      --bg-row: #141A18;
+      --bg-row-alt: #191F1C;
+      --bg-row-hover: #1E2521;
+      --border: #232A26;
+      --text-primary: #E8ECE9;
+      --text-secondary: #8C978F;
+      --accent: #3E9C76;
+      --positive: #4CAF7D;
+      --negative: #E0665F;
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -71,23 +113,23 @@ const htmlHead = `<!DOCTYPE html>
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: #0d1f16;
+      background: var(--bg-page);
       min-height: 100vh;
       padding: 20px;
-      color: #e6efe9;
+      color: var(--text-primary);
     }
 
     .container {
       max-width: 1400px;
       margin: 0 auto;
-      background: #152e21;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      background: var(--bg-panel);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
       overflow: hidden;
     }
 
     header {
-      background: linear-gradient(135deg, #2e9d5f 0%, #3aa76a 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--positive) 100%);
       color: white;
       padding: 40px 20px;
       text-align: center;
@@ -97,6 +139,7 @@ const htmlHead = `<!DOCTYPE html>
       font-size: 2.5em;
       margin-bottom: 10px;
       font-weight: 700;
+      letter-spacing: -0.5px;
     }
 
     header p {
@@ -106,8 +149,8 @@ const htmlHead = `<!DOCTYPE html>
 
     .controls {
       padding: 20px;
-      background: #1a3a2a;
-      border-bottom: 1px solid #0d1f16;
+      background: var(--bg-row-alt);
+      border-bottom: 1px solid var(--border);
     }
 
     .filter-group {
@@ -119,33 +162,34 @@ const htmlHead = `<!DOCTYPE html>
 
     label {
       font-weight: 500;
-      color: #9db3a5;
+      color: var(--text-secondary);
+      font-size: 0.95em;
     }
 
     input[type="number"],
     input[type="text"],
     select {
       padding: 10px 15px;
-      border: 1px solid #2e5a47;
+      border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 0.95em;
       font-family: inherit;
-      background: #0d1f16;
-      color: #e6efe9;
+      background: var(--bg-row);
+      color: var(--text-primary);
     }
 
     input[type="number"]:focus,
     input[type="text"]:focus,
     select:focus {
       outline: none;
-      border-color: #3aa76a;
-      box-shadow: 0 0 0 3px rgba(58, 167, 106, 0.2);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(62, 156, 118, 0.15);
     }
 
     .tabs {
       display: flex;
-      border-bottom: 1px solid #0d1f16;
-      background: #1a3a2a;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-row-alt);
       overflow-x: auto;
     }
 
@@ -158,7 +202,7 @@ const htmlHead = `<!DOCTYPE html>
       font-size: 0.95em;
       font-weight: 600;
       cursor: pointer;
-      color: #9db3a5;
+      color: var(--text-secondary);
       border-bottom: 3px solid transparent;
       transition: all 0.3s ease;
       height: 60px;
@@ -170,18 +214,18 @@ const htmlHead = `<!DOCTYPE html>
     }
 
     .tab-button:active {
-      background: rgba(58, 167, 106, 0.1);
+      background: rgba(62, 156, 118, 0.08);
     }
 
     .tab-button.active {
-      color: #4ade80;
-      border-bottom-color: #3aa76a;
+      color: var(--accent);
+      border-bottom-color: var(--accent);
       background: transparent;
     }
 
     .tab-button:hover {
-      background: rgba(58, 167, 106, 0.05);
-      color: #4ade80;
+      background: rgba(62, 156, 118, 0.05);
+      color: var(--accent);
     }
 
     .tab-content {
@@ -210,28 +254,40 @@ const htmlHead = `<!DOCTYPE html>
     }
 
     thead {
-      background: #1a3a2a;
+      background: var(--bg-row-alt);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     th {
       padding: 12px 15px;
       text-align: left;
       font-weight: 600;
-      color: #4ade80;
+      color: var(--text-secondary);
       cursor: pointer;
       user-select: none;
       white-space: nowrap;
-      border-bottom: 2px solid #0d1f16;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: relative;
+    }
+
+    th.numeric {
+      text-align: right;
     }
 
     th:hover {
-      background: rgba(58, 167, 106, 0.1);
+      background: var(--bg-row-hover);
     }
 
     th.sortable::after {
       content: ' ↕';
       font-size: 0.8em;
       opacity: 0.5;
+      margin-left: 4px;
     }
 
     th.sort-asc::after {
@@ -244,20 +300,77 @@ const htmlHead = `<!DOCTYPE html>
       opacity: 1;
     }
 
+    .info-icon {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      margin-left: 4px;
+      background: var(--text-secondary);
+      color: var(--bg-page);
+      border-radius: 50%;
+      font-size: 0.7em;
+      font-weight: 700;
+      text-align: center;
+      line-height: 18px;
+      cursor: help;
+      position: relative;
+      min-width: 24px;
+      min-height: 24px;
+    }
+
+    .tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-row);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.75em;
+      white-space: normal;
+      width: 200px;
+      text-align: left;
+      display: none;
+      z-index: 1000;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 400;
+      margin-bottom: 6px;
+    }
+
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 4px solid transparent;
+      border-top-color: var(--border);
+    }
+
+    .info-icon:hover .tooltip,
+    .info-icon.active .tooltip {
+      display: block;
+    }
+
     tbody tr {
-      border-bottom: 1px solid #0d1f16;
+      border-bottom: 1px solid var(--border);
+      height: 44px;
     }
 
     tbody tr:nth-child(odd) {
-      background: #1a3a2a;
+      background: var(--bg-row);
     }
 
     tbody tr:nth-child(even) {
-      background: #152e21;
+      background: var(--bg-row-alt);
     }
 
     tbody tr:hover {
-      background: rgba(58, 167, 106, 0.1);
+      background: var(--bg-row-hover);
     }
 
     td {
@@ -265,24 +378,30 @@ const htmlHead = `<!DOCTYPE html>
       vertical-align: middle;
     }
 
+    td.numeric {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-family: 'Courier New', monospace;
+    }
+
     .positive {
-      color: #4ade80;
+      color: var(--positive);
       font-weight: 600;
     }
 
     .negative {
-      color: #f87171;
+      color: var(--negative);
       font-weight: 600;
     }
 
     .neutral {
-      color: #9db3a5;
+      color: var(--text-secondary);
     }
 
     .tendenz {
       font-size: 0.85em;
-      background: rgba(58, 167, 106, 0.2);
-      color: #4ade80;
+      background: rgba(62, 156, 118, 0.15);
+      color: var(--positive);
       padding: 4px 8px;
       border-radius: 4px;
       display: inline-block;
@@ -290,74 +409,72 @@ const htmlHead = `<!DOCTYPE html>
 
     .score-cell {
       font-weight: 700;
-      position: relative;
+      text-align: center;
     }
 
     .score-bar {
       display: inline-block;
-      height: 22px;
+      height: 24px;
       border-radius: 4px;
       min-width: 60px;
       text-align: center;
       color: white;
       font-weight: 600;
       font-size: 0.85em;
-      line-height: 22px;
+      line-height: 24px;
     }
 
-    .score-80-100 { background: linear-gradient(90deg, #3aa76a 0%, #4ade80 100%); }
-    .score-60-80 { background: linear-gradient(90deg, #2e9d5f 0%, #3aa76a 100%); }
-    .score-40-60 { background: linear-gradient(90deg, #22c55e 0%, #2e9d5f 100%); }
-    .score-0-40 { background: linear-gradient(90deg, #9db3a5 0%, #6b8176 100%); }
+    .score-80-100 { background: linear-gradient(90deg, var(--accent) 0%, var(--positive) 100%); }
+    .score-60-80 { background: linear-gradient(90deg, var(--accent) 20%, var(--positive) 100%); }
+    .score-40-60 { background: linear-gradient(90deg, var(--accent) 50%, var(--positive) 100%); }
+    .score-0-40 { background: linear-gradient(90deg, var(--text-secondary) 0%, var(--accent) 100%); }
 
-    .news-buttons {
+    .research-buttons {
       display: flex;
-      gap: 6px;
+      gap: 4px;
+      flex-wrap: wrap;
     }
 
-    .news-btn {
+    .research-btn {
       display: inline-block;
       padding: 6px 10px;
       border-radius: 4px;
       text-decoration: none;
       color: white;
       font-weight: 600;
-      font-size: 0.8em;
+      font-size: 0.75em;
       transition: all 0.2s;
-      border: 1px solid #2e9d5f;
-      background: rgba(58, 167, 106, 0.2);
+      border: 1px solid var(--accent);
+      background: rgba(62, 156, 118, 0.2);
+      cursor: pointer;
     }
 
-    .news-btn:hover {
-      background: #3aa76a;
-      border-color: #4ade80;
+    .research-btn:hover {
+      background: var(--accent);
+      border-color: var(--positive);
     }
 
-    .news-btn:active {
-      background: #2e9d5f;
+    .research-btn:active {
+      background: var(--positive);
     }
 
     .empty-state {
       text-align: center;
       padding: 40px 20px;
-      color: #9db3a5;
+      color: var(--text-secondary);
     }
 
     .stats-summary {
       padding: 15px 20px;
-      background: #1a3a2a;
-      border-top: 1px solid #0d1f16;
+      background: var(--bg-row-alt);
+      border-top: 1px solid var(--border);
       font-size: 0.9em;
-      color: #9db3a5;
+      color: var(--text-secondary);
     }
 
     @media (max-width: 768px) {
       header h1 {
         font-size: 1.8em;
-      }
-
-      header p {
-        font-size: 0.85em;
       }
 
       .filter-group {
@@ -378,6 +495,10 @@ const htmlHead = `<!DOCTYPE html>
         padding: 8px 10px;
       }
 
+      tbody tr {
+        height: 40px;
+      }
+
       .tabs {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -390,12 +511,12 @@ const htmlHead = `<!DOCTYPE html>
         font-size: 0.85em;
       }
 
-      .news-buttons {
+      .research-buttons {
         flex-direction: column;
         gap: 4px;
       }
 
-      .news-btn {
+      .research-btn {
         width: 100%;
         text-align: center;
         padding: 8px 6px;
@@ -405,6 +526,15 @@ const htmlHead = `<!DOCTYPE html>
         font-size: 0.75em;
         height: 20px;
         line-height: 20px;
+      }
+
+      .tooltip {
+        width: 160px;
+        font-size: 0.7em;
+      }
+
+      th {
+        font-size: 0.75em;
       }
     }
 
@@ -436,6 +566,10 @@ const htmlHead = `<!DOCTYPE html>
       td, th {
         padding: 6px 8px;
       }
+
+      tbody tr {
+        height: 36px;
+      }
     }
   </style>
 </head>
@@ -465,10 +599,10 @@ const htmlHead = `<!DOCTYPE html>
           <tr>
             <th class="sortable">Spieler</th>
             <th class="sortable">Verein</th>
-            <th class="sortable">Marktwert</th>
-            <th class="sortable">Punkte/Mio</th>
-            <th class="sortable">Trend %</th>
-            <th class="sortable">Score</th>
+            <th class="sortable numeric">Marktwert<span class="info-icon">i<span class="tooltip">Aktueller Comunio-Marktwert.</span></span></th>
+            <th class="sortable numeric">Punkte/Mio<span class="info-icon">i<span class="tooltip">Comunio-Punkte pro Mio Marktwert — Leistung fürs Geld. Hoch = günstig-stark.</span></span></th>
+            <th class="sortable numeric">Trend %<span class="info-icon">i<span class="tooltip">Marktwert-Veränderung im gewählten Zeitraum. Grün steigt, Rot fällt.</span></span></th>
+            <th class="sortable numeric">Score<span class="info-icon">i<span class="tooltip">Geheimtipp-Score 0-100: kombiniert Marktwert-Momentum und Punkte-pro-Mio. Höher = besserer Kauftipp.</span></span></th>
             <th></th>
           </tr>
         </thead>
@@ -491,9 +625,9 @@ const htmlHead = `<!DOCTYPE html>
           <tr>
             <th class="sortable">Spieler</th>
             <th class="sortable">Verein</th>
-            <th class="sortable">Marktwert</th>
-            <th class="sortable">Veränderung (abs)</th>
-            <th class="sortable">Veränderung (%)</th>
+            <th class="sortable numeric">Marktwert<span class="info-icon">i<span class="tooltip">Aktueller Comunio-Marktwert.</span></span></th>
+            <th class="sortable numeric">Veränderung (abs)<span class="info-icon">i<span class="tooltip">Marktwert-Veränderung im gewählten Zeitraum. Grün steigt, Rot fällt.</span></span></th>
+            <th class="sortable numeric">Veränderung (%)<span class="info-icon">i<span class="tooltip">Prozentuale Marktwert-Veränderung.</span></span></th>
             <th>Tendenz</th>
             <th></th>
           </tr>
@@ -514,11 +648,11 @@ const htmlHead = `<!DOCTYPE html>
           <tr>
             <th class="sortable">Spieler</th>
             <th class="sortable">Verein</th>
-            <th class="sortable">Marktwert</th>
-            <th class="sortable">Punkte</th>
-            <th class="sortable">Einsätze</th>
-            <th class="sortable">Punkte/Spiel</th>
-            <th class="sortable">Punkte/Mio</th>
+            <th class="sortable numeric">Marktwert<span class="info-icon">i<span class="tooltip">Aktueller Comunio-Marktwert.</span></span></th>
+            <th class="sortable numeric">Punkte<span class="info-icon">i<span class="tooltip">Gesammelte Comunio-Punkte diese Saison.</span></span></th>
+            <th class="sortable numeric">Einsätze<span class="info-icon">i<span class="tooltip">Spiele mit Einsatz diese Saison.</span></span></th>
+            <th class="sortable numeric">Punkte/Spiel<span class="info-icon">i<span class="tooltip">Durchschnittliche Punkte pro Einsatz — fairer als Gesamtpunkte bei wenigen Spielen.</span></span></th>
+            <th class="sortable numeric">Punkte/Mio<span class="info-icon">i<span class="tooltip">Comunio-Punkte pro Mio Marktwert — Leistung fürs Geld. Hoch = günstig-stark.</span></span></th>
             <th></th>
           </tr>
         </thead>
@@ -530,6 +664,7 @@ const htmlHead = `<!DOCTYPE html>
 
   <script>
     window.PLAYERS = ` + JSON.stringify(players) + `;
+    window.CLUB_SHORT_CODES = ` + JSON.stringify(CLUB_SHORT_CODES) + `;
   </script>
 
   <script>
@@ -543,8 +678,23 @@ const htmlHead = `<!DOCTYPE html>
       setupTabs();
       setupFilters();
       setupSwipeGestures();
+      setupTooltips();
       renderGeheimtippsTable();
     });
+
+    function setupTooltips() {
+      var infoIcons = document.querySelectorAll('.info-icon');
+      infoIcons.forEach(function(icon) {
+        icon.addEventListener('click', function(e) {
+          e.stopPropagation();
+          infoIcons.forEach(function(i) { i.classList.remove('active'); });
+          icon.classList.add('active');
+        });
+      });
+      document.addEventListener('click', function() {
+        infoIcons.forEach(function(i) { i.classList.remove('active'); });
+      });
+    }
 
     function setupSwipeGestures() {
       var tabs = document.querySelectorAll('.tabs');
@@ -646,12 +796,25 @@ const htmlHead = `<!DOCTYPE html>
       return sign + (abs / 1000000).toFixed(2).replace('.', ',') + ' M' + pctStr;
     }
 
-    function createNewsButtons(spieler, club) {
-      var googleQuery = encodeURIComponent(spieler + ' ' + club + ' Transfer');
-      var tmQuery = encodeURIComponent(spieler);
-      var html = '<div class="news-buttons">';
-      html += '<a href="https://news.google.com/search?q=' + googleQuery + '" target="_blank" class="news-btn">News</a>';
-      html += '<a href="https://www.transfermarkt.de/schnellsuche/ergebnis/schnellsuche?query=' + tmQuery + '" target="_blank" class="news-btn">TM</a>';
+    function getLastNameFromFull(fullName) {
+      var parts = fullName.trim().split(' ');
+      return parts[parts.length - 1];
+    }
+
+    function createResearchButtons(spieler, club) {
+      var lastName = getLastNameFromFull(spieler);
+      var clubShort = window.CLUB_SHORT_CODES[club] || club;
+
+      var googleNewsQuery = encodeURIComponent(lastName + ' ' + club + ' Transfer');
+      var tmQuery = encodeURIComponent(lastName + ':' + clubShort);
+      var kickerQuery = encodeURIComponent(lastName + ' ' + club + ' site:kicker.de spieler');
+      var liQuery = encodeURIComponent(lastName + ' ' + club + ' site:ligainsider.de');
+
+      var html = '<div class="research-buttons">';
+      html += '<a href="https://news.google.com/search?q=' + googleNewsQuery + '" target="_blank" class="research-btn">News</a>';
+      html += '<a href="https://www.transfermarkt.de/schnellsuche/ergebnis/schnellsuche?query=' + tmQuery + '" target="_blank" class="research-btn">TM</a>';
+      html += '<a href="https://www.google.com/search?q=' + kickerQuery + '" target="_blank" class="research-btn">Kicker</a>';
+      html += '<a href="https://www.google.com/search?q=' + liQuery + '" target="_blank" class="research-btn">LI</a>';
       html += '</div>';
       return html;
     }
@@ -753,15 +916,18 @@ const htmlHead = `<!DOCTYPE html>
         td2.textContent = p.club;
         tr.appendChild(td2);
         var td3 = document.createElement('td');
+        td3.className = 'numeric';
         td3.textContent = formatMarktwert(p.marktwert);
         tr.appendChild(td3);
         var td4 = document.createElement('td');
+        td4.className = 'numeric';
         td4.textContent = p.punkteProMio !== null ? p.punkteProMio.toFixed(1).replace('.', ',') : 'N/A';
         tr.appendChild(td4);
         var td5 = document.createElement('td');
+        td5.className = 'numeric';
         var trend = p.usedTrend === 'vorwoche' ? (p.veraenderung.vorwoche ? p.veraenderung.vorwoche.prozent : 0) : (p.veraenderung.vortag ? p.veraenderung.vortag.prozent : 0);
         td5.textContent = trend >= 0 ? '+' + trend + '%' : trend + '%';
-        td5.className = trend > 0 ? 'positive' : 'neutral';
+        td5.className = 'numeric ' + (trend > 0 ? 'positive' : 'neutral');
         tr.appendChild(td5);
         var td6 = document.createElement('td');
         td6.className = 'score-cell';
@@ -771,8 +937,8 @@ const htmlHead = `<!DOCTYPE html>
         td6.appendChild(scoreBar);
         tr.appendChild(td6);
         var td7 = document.createElement('td');
-        var newsHTML = createNewsButtons(p.spieler, p.club);
-        td7.innerHTML = newsHTML;
+        var researchHTML = createResearchButtons(p.spieler, p.club);
+        td7.innerHTML = researchHTML;
         tr.appendChild(td7);
         tbody.appendChild(tr);
       });
@@ -845,14 +1011,15 @@ const htmlHead = `<!DOCTYPE html>
         td2.textContent = p.club;
         tr.appendChild(td2);
         var td3 = document.createElement('td');
+        td3.className = 'numeric';
         td3.textContent = formatMarktwert(p.marktwert);
         tr.appendChild(td3);
         var td4 = document.createElement('td');
-        td4.className = changeClass;
+        td4.className = 'numeric ' + changeClass;
         td4.textContent = formatChange(change.abs, null);
         tr.appendChild(td4);
         var td5 = document.createElement('td');
-        td5.className = changeClass;
+        td5.className = 'numeric ' + changeClass;
         td5.textContent = change.prozent !== null ? (change.prozent >= 0 ? '+' : '') + change.prozent + '%' : 'N/A';
         tr.appendChild(td5);
         var td6 = document.createElement('td');
@@ -864,8 +1031,8 @@ const htmlHead = `<!DOCTYPE html>
         }
         tr.appendChild(td6);
         var td7 = document.createElement('td');
-        var newsHTML = createNewsButtons(p.spieler, p.club);
-        td7.innerHTML = newsHTML;
+        var researchHTML = createResearchButtons(p.spieler, p.club);
+        td7.innerHTML = researchHTML;
         tr.appendChild(td7);
         tbody.appendChild(tr);
       });
@@ -943,23 +1110,28 @@ const htmlHead = `<!DOCTYPE html>
         td2.textContent = p.club;
         tr.appendChild(td2);
         var td3 = document.createElement('td');
+        td3.className = 'numeric';
         td3.textContent = formatMarktwert(p.marktwert);
         tr.appendChild(td3);
         var td4 = document.createElement('td');
+        td4.className = 'numeric';
         td4.textContent = p.punkte;
         tr.appendChild(td4);
         var td5 = document.createElement('td');
+        td5.className = 'numeric';
         td5.textContent = p.einsaetze || 'N/A';
         tr.appendChild(td5);
         var td6 = document.createElement('td');
+        td6.className = 'numeric';
         td6.textContent = p.punkteProSpiel !== null ? p.punkteProSpiel.toFixed(2).replace('.', ',') : 'N/A';
         tr.appendChild(td6);
         var td7 = document.createElement('td');
+        td7.className = 'numeric';
         td7.textContent = p.punkteProMio !== null ? p.punkteProMio.toFixed(1).replace('.', ',') : 'N/A';
         tr.appendChild(td7);
         var td8 = document.createElement('td');
-        var newsHTML = createNewsButtons(p.spieler, p.club);
-        td8.innerHTML = newsHTML;
+        var researchHTML = createResearchButtons(p.spieler, p.club);
+        td8.innerHTML = researchHTML;
         tr.appendChild(td8);
         tbody.appendChild(tr);
       });
@@ -976,9 +1148,10 @@ if (!fs.existsSync('dashboard')) {
   fs.mkdirSync('dashboard');
 }
 
-fs.writeFileSync('dashboard/index.html', htmlHead);
+fs.writeFileSync('dashboard/index.html', htmlContent);
 console.log('✓ Dashboard generated: dashboard/index.html');
 console.log(`✓ File size: ${(fs.statSync('dashboard/index.html').size / 1024).toFixed(1)} KB`);
 console.log(`✓ Embedded players: ${players.length}`);
 console.log(`✓ Qualifying Geheimtipps: ${players.filter(p => p.geheimtippScore !== null).length}`);
-console.log(`✓ Theme: Dark Forest Green (no purple remaining)`);
+console.log(`✓ Theme: Subdued Emerald Dark with CSS variables`);
+console.log(`✓ Features: Sticky headers, tooltips (hover+tap), 4 research links, numeric right-aligned`);
