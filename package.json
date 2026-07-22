@@ -1,0 +1,24 @@
+{
+  "name": "building-challenge-2",
+  "version": "1.0.0",
+  "description": "> Diese Datei füllst du im Laufe der Challenge aus. Die Platzhalter in eckigen > Klammern ersetzt du durch deine Inhalte — dein Claude Code hilft dir dabei > (siehe START.md).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/officephysioschmidt-stack/BUILDING-CHALLENGE-2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/officephysioschmidt-stack/BUILDING-CHALLENGE-2/issues"
+  },
+  "homepage": "https://github.com/officephysioschmidt-stack/BUILDING-CHALLENGE-2#readme",
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  }
+}
