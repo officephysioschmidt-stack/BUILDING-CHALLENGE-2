@@ -1,10 +1,66 @@
 import fs from 'fs';
 
 // Read players data
-const players = JSON.parse(fs.readFileSync('data/players.json', 'utf-8'));
+let players = JSON.parse(fs.readFileSync('data/players.json', 'utf-8'));
+
+// Calculate Geheimtipp-Score for each player
+function calculateGeheimtippScore(playersData) {
+  // Find qualifying players
+  const qualifying = playersData.filter(p => {
+    if (p.punkteProMio === null || p.istTorhueter) return false;
+    // Check for positive trend
+    const weekTrend = p.veraenderung && p.veraenderung.vorwoche ? p.veraenderung.vorwoche.prozent : null;
+    const dayTrend = p.veraenderung && p.veraenderung.vortag ? p.veraenderung.vortag.prozent : null;
+    const momentumWert = weekTrend !== null ? weekTrend : dayTrend;
+    return momentumWert && momentumWert > 0;
+  });
+
+  if (qualifying.length === 0) {
+    // No qualifying players, set all to null
+    playersData.forEach(p => { p.geheimtippScore = null; });
+    return;
+  }
+
+  // Collect values for normalization
+  const ppmValues = qualifying.map(p => p.punkteProMio);
+  const momentumValues = qualifying.map(p => {
+    const weekTrend = p.veraenderung && p.veraenderung.vorwoche ? p.veraenderung.vorwoche.prozent : null;
+    const dayTrend = p.veraenderung && p.veraenderung.vortag ? p.veraenderung.vortag.prozent : null;
+    return weekTrend !== null ? weekTrend : dayTrend;
+  });
+
+  const minPPM = Math.min(...ppmValues);
+  const maxPPM = Math.max(...ppmValues);
+  const minMom = Math.min(...momentumValues);
+  const maxMom = Math.max(...momentumValues);
+
+  // Calculate score for each player
+  playersData.forEach(p => {
+    const weekTrend = p.veraenderung && p.veraenderung.vorwoche ? p.veraenderung.vorwoche.prozent : null;
+    const dayTrend = p.veraenderung && p.veraenderung.vortag ? p.veraenderung.vortag.prozent : null;
+    const momentumWert = weekTrend !== null ? weekTrend : dayTrend;
+
+    // Check qualification again
+    if (p.punkteProMio === null || p.istTorhueter || !momentumWert || momentumWert <= 0) {
+      p.geheimtippScore = null;
+      p.usedTrend = null;
+    } else {
+      // Normalize values
+      const valueNorm = maxPPM - minPPM === 0 ? 0.5 : (p.punkteProMio - minPPM) / (maxPPM - minPPM);
+      const momNorm = maxMom - minMom === 0 ? 0.5 : (momentumWert - minMom) / (maxMom - minMom);
+
+      // Calculate score: 50/50 split
+      const rawScore = 0.5 * valueNorm + 0.5 * momNorm;
+      p.geheimtippScore = Math.round(rawScore * 100 * 10) / 10;
+      p.usedTrend = weekTrend !== null ? 'vorwoche' : 'vortag';
+    }
+  });
+}
+
+// Calculate score for all players
+calculateGeheimtippScore(players);
 
 // HTML/CSS/JS template - NO nested template literals
-// Build as string concatenation instead
 const htmlHead = `<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -128,14 +184,9 @@ const htmlHead = `<!DOCTYPE html>
       display: block;
     }
 
-    .momentum-controls {
-      margin-bottom: 20px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .value-controls {
+    .momentum-controls,
+    .value-controls,
+    .geheimtipps-controls {
       margin-bottom: 20px;
       display: flex;
       gap: 10px;
@@ -222,6 +273,28 @@ const htmlHead = `<!DOCTYPE html>
       display: inline-block;
     }
 
+    .score-cell {
+      font-weight: 700;
+      position: relative;
+    }
+
+    .score-bar {
+      display: inline-block;
+      height: 20px;
+      border-radius: 4px;
+      min-width: 50px;
+      text-align: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.85em;
+      line-height: 20px;
+    }
+
+    .score-80-100 { background: linear-gradient(90deg, #27ae60 0%, #229954 100%); }
+    .score-60-80 { background: linear-gradient(90deg, #f39c12 0%, #e67e22 100%); }
+    .score-40-60 { background: linear-gradient(90deg, #3498db 0%, #2980b9 100%); }
+    .score-0-40 { background: linear-gradient(90deg, #95a5a6 0%, #7f8c8d 100%); }
+
     .news-link {
       display: inline-block;
       width: 24px;
@@ -294,11 +367,30 @@ const htmlHead = `<!DOCTYPE html>
     </div>
 
     <div class="tabs">
-      <button class="tab-button active" data-tab="momentum">MOMENTUM</button>
+      <button class="tab-button active" data-tab="geheimtipps">GEHEIMTIPPS</button>
+      <button class="tab-button" data-tab="momentum">MOMENTUM</button>
       <button class="tab-button" data-tab="value-picks">VALUE-PICKS</button>
     </div>
 
-    <div id="momentum" class="tab-content active">
+    <div id="geheimtipps" class="tab-content active">
+      <table id="geheimtippsTable">
+        <thead>
+          <tr>
+            <th class="sortable">Spieler</th>
+            <th class="sortable">Verein</th>
+            <th class="sortable">Marktwert</th>
+            <th class="sortable">Punkte/Mio</th>
+            <th class="sortable">Trend %</th>
+            <th class="sortable">Score</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="stats-summary" id="geheimtippsStats"></div>
+    </div>
+
+    <div id="momentum" class="tab-content">
       <div class="momentum-controls">
         <label for="periodSelector">Zeitraum:</label>
         <select id="periodSelector">
@@ -356,12 +448,12 @@ const htmlHead = `<!DOCTYPE html>
   <script>
     let currentSortColumn = null;
     let currentSortAsc = true;
-    let currentTab = 'momentum';
+    let currentTab = 'geheimtipps';
 
     document.addEventListener('DOMContentLoaded', function() {
       setupTabs();
       setupFilters();
-      renderMomentumTable();
+      renderGeheimtippsTable();
     });
 
     function setupTabs() {
@@ -375,7 +467,10 @@ const htmlHead = `<!DOCTYPE html>
           currentTab = e.target.getAttribute('data-tab');
           e.target.classList.add('active');
           document.getElementById(currentTab).classList.add('active');
-          if (currentTab === 'momentum') {
+          currentSortColumn = null;
+          if (currentTab === 'geheimtipps') {
+            renderGeheimtippsTable();
+          } else if (currentTab === 'momentum') {
             renderMomentumTable();
           } else {
             renderValueTable();
@@ -386,7 +481,9 @@ const htmlHead = `<!DOCTYPE html>
 
     function setupFilters() {
       document.getElementById('budgetFilter').addEventListener('input', function() {
-        if (currentTab === 'momentum') {
+        if (currentTab === 'geheimtipps') {
+          renderGeheimtippsTable();
+        } else if (currentTab === 'momentum') {
           renderMomentumTable();
         } else {
           renderValueTable();
@@ -431,6 +528,13 @@ const htmlHead = `<!DOCTYPE html>
       return encodeURIComponent(query);
     }
 
+    function getScoreBarClass(score) {
+      if (score >= 80) return 'score-80-100';
+      if (score >= 60) return 'score-60-80';
+      if (score >= 40) return 'score-40-60';
+      return 'score-0-40';
+    }
+
     function setupTableSorting(tableId, renderFunc) {
       var table = document.getElementById(tableId);
       var headers = table.querySelectorAll('th.sortable');
@@ -454,6 +558,103 @@ const htmlHead = `<!DOCTYPE html>
           renderFunc();
         });
       });
+    }
+
+    function renderGeheimtippsTable() {
+      var budgetLimit = getBudgetLimit();
+      var filtered = window.PLAYERS.filter(function(p) {
+        if (!filterByBudget(p, budgetLimit)) return false;
+        return p.geheimtippScore !== null;
+      });
+      filtered.sort(function(a, b) {
+        return (b.geheimtippScore || 0) - (a.geheimtippScore || 0);
+      });
+      if (currentSortColumn !== null) {
+        filtered.sort(function(a, b) {
+          var aVal, bVal;
+          if (currentSortColumn === 0) {
+            aVal = a.spieler;
+            bVal = b.spieler;
+          } else if (currentSortColumn === 1) {
+            aVal = a.club;
+            bVal = b.club;
+          } else if (currentSortColumn === 2) {
+            aVal = a.marktwert || 0;
+            bVal = b.marktwert || 0;
+          } else if (currentSortColumn === 3) {
+            aVal = a.punkteProMio || 0;
+            bVal = b.punkteProMio || 0;
+          } else if (currentSortColumn === 4) {
+            var aTrend = a.usedTrend === 'vorwoche' ? (a.veraenderung.vorwoche ? a.veraenderung.vorwoche.prozent : 0) : (a.veraenderung.vortag ? a.veraenderung.vortag.prozent : 0);
+            var bTrend = b.usedTrend === 'vorwoche' ? (b.veraenderung.vorwoche ? b.veraenderung.vorwoche.prozent : 0) : (b.veraenderung.vortag ? b.veraenderung.vortag.prozent : 0);
+            aVal = aTrend;
+            bVal = bTrend;
+          } else if (currentSortColumn === 5) {
+            aVal = a.geheimtippScore || 0;
+            bVal = b.geheimtippScore || 0;
+          } else {
+            aVal = 0;
+            bVal = 0;
+          }
+          if (typeof aVal === 'string') {
+            return currentSortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+          } else {
+            return currentSortAsc ? (aVal - bVal) : (bVal - aVal);
+          }
+        });
+      }
+      var tbody = document.getElementById('geheimtippsTable').querySelector('tbody');
+      tbody.innerHTML = '';
+      if (filtered.length === 0) {
+        var tr = document.createElement('tr');
+        var td = document.createElement('td');
+        td.colSpan = '7';
+        td.className = 'empty-state';
+        td.textContent = 'Keine Spieler gefunden';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        document.getElementById('geheimtippsStats').textContent = '';
+        return;
+      }
+      filtered.forEach(function(p) {
+        var tr = document.createElement('tr');
+        var td1 = document.createElement('td');
+        td1.textContent = p.spieler;
+        tr.appendChild(td1);
+        var td2 = document.createElement('td');
+        td2.textContent = p.club;
+        tr.appendChild(td2);
+        var td3 = document.createElement('td');
+        td3.textContent = formatMarktwert(p.marktwert);
+        tr.appendChild(td3);
+        var td4 = document.createElement('td');
+        td4.textContent = p.punkteProMio !== null ? p.punkteProMio.toFixed(1).replace('.', ',') : 'N/A';
+        tr.appendChild(td4);
+        var td5 = document.createElement('td');
+        var trend = p.usedTrend === 'vorwoche' ? (p.veraenderung.vorwoche ? p.veraenderung.vorwoche.prozent : 0) : (p.veraenderung.vortag ? p.veraenderung.vortag.prozent : 0);
+        td5.textContent = trend >= 0 ? '+' + trend + '%' : trend + '%';
+        td5.className = trend > 0 ? 'positive' : 'neutral';
+        tr.appendChild(td5);
+        var td6 = document.createElement('td');
+        td6.className = 'score-cell';
+        var scoreBar = document.createElement('div');
+        scoreBar.className = 'score-bar ' + getScoreBarClass(p.geheimtippScore);
+        scoreBar.textContent = p.geheimtippScore.toFixed(1);
+        td6.appendChild(scoreBar);
+        tr.appendChild(td6);
+        var td7 = document.createElement('td');
+        var link = document.createElement('a');
+        link.href = 'https://news.google.com/search?q=' + encodeNewsSearch(p.spieler, p.club);
+        link.target = '_blank';
+        link.className = 'news-link';
+        link.textContent = '🔗';
+        td7.appendChild(link);
+        tr.appendChild(td7);
+        tbody.appendChild(tr);
+      });
+      setupTableSorting('geheimtippsTable', renderGeheimtippsTable);
+      var total = window.PLAYERS.filter(function(p) { return p.geheimtippScore !== null; }).length;
+      document.getElementById('geheimtippsStats').textContent = 'Zeige ' + filtered.length + ' von ' + total + ' Geheimtipps';
     }
 
     function renderMomentumTable() {
@@ -663,3 +864,4 @@ fs.writeFileSync('dashboard/index.html', htmlHead);
 console.log('✓ Dashboard generated: dashboard/index.html');
 console.log(`✓ File size: ${(fs.statSync('dashboard/index.html').size / 1024).toFixed(1)} KB`);
 console.log(`✓ Embedded players: ${players.length}`);
+console.log(`✓ Qualifying Geheimtipps: ${players.filter(p => p.geheimtippScore !== null).length}`);
