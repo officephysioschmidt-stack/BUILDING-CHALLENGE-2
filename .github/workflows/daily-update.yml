@@ -1,0 +1,35 @@
+name: Daily update
+
+# Comunio aktualisiert Marktwerte 1x taeglich ~5-6 Uhr deutscher Zeit.
+# Cron laeuft in UTC: 05:42 UTC = 07:42 MESZ (Sommer) / 06:42 MEZ (Winter),
+# damit auch im Winter sicher NACH dem Comunio-Update gescrapt wird.
+# Krumme Minute (42), weil GitHub Cron-Jobs zu vollen/halben Stunden stark verzoegert.
+on:
+  schedule:
+    - cron: "42 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape-build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Scrape stats.comunio.de
+        run: node scrape.mjs
+
+      - name: Build dashboard
+        run: node build-dashboard.mjs
+
+      - name: Deploy to Cloudflare Pages (Production)
+        run: npx wrangler pages deploy dashboard --project-name=comunio-scout --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 0bafb48c2df0935f9dda59e34a822ea8
