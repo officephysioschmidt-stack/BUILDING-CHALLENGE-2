@@ -3,6 +3,15 @@ import fs from 'fs';
 // Read players data
 let players = JSON.parse(fs.readFileSync('data/players.json', 'utf-8'));
 
+// Read kader (squad) data
+let kader = {};
+try {
+  kader = JSON.parse(fs.readFileSync('data/kader.json', 'utf-8'));
+  if (!kader.spieler) kader.spieler = [];
+} catch (e) {
+  kader = { spieler: [] };
+}
+
 // Read transfers data
 let transfers = {};
 try {
@@ -60,6 +69,20 @@ const CLUB_BADGES = {
   'VfB Stuttgart': { kurz: 'VfB', bg: '#FFFFFF', fg: '#DF1119' },
   'VfL Wolfsburg': { kurz: 'WOB', bg: '#65B32E', fg: '#FFFFFF' },
 };
+
+// Calculate total unique players from PLAYERS + KADER
+function calculateTotalPlayersCount() {
+  const playerNames = new Set();
+  players.forEach(p => {
+    playerNames.add(p.spieler.toLowerCase());
+  });
+  kader.spieler.forEach(p => {
+    playerNames.add(p.spieler.toLowerCase());
+  });
+  return playerNames.size;
+}
+
+const totalPlayersEstimate = calculateTotalPlayersCount();
 
 // Calculate Geheimtipp-Score
 function calculateGeheimtippScore(playersData) {
@@ -1020,7 +1043,7 @@ const htmlContent = `<!DOCTYPE html>
     </header>
 
     <div class="search-section">
-      <input type="text" id="playerSearch" placeholder="Spieler suchen …">
+      <input type="text" id="playerSearch" placeholder="Spieler suchen (alle ~` + totalPlayersEstimate + `) …">
     </div>
 
     <div class="controls">
@@ -1040,6 +1063,7 @@ const htmlContent = `<!DOCTYPE html>
         <p><strong>Punkte · Punkte/Spiel · Einsätze</strong> — Saison-Ausbeute (Tab Schnäppchen).</p>
         <p><strong>🚀 Momentum · Veränderung</strong> — Marktwert-Trend im gewählten Zeitraum (Tab 🚀). <span class="pos">Grün = steigt</span>, <span class="neg">Rot = fällt</span>.</p>
         <p><strong>⭐ Mein Kader</strong> — Spieler merken; im Tab „Mein Kader" siehst du gebündelt ihren Marktwert-Trend.</p>
+        <p><strong>Suche</strong> — Die Suche kennt den kompletten Liga-Kader (auch Spieler ohne Top-Listen-Platz — dort fehlen dann Trend-Daten).</p>
         <p><strong>Neuzugänge</strong> — Spieler, die Comunio neu in die Liga aufgenommen hat — oft noch günstig, früh beobachten. Abgänge sind aus der Liga entfernt.</p>
       </div>
     </details>
@@ -1182,6 +1206,7 @@ const htmlContent = `<!DOCTYPE html>
 
   <script>
     window.PLAYERS = ` + JSON.stringify(players).replace(/</g, '\\u003c') + `;
+    window.KADER = ` + JSON.stringify(kader).replace(/</g, '\\u003c') + `;
     window.CLUB_SHORT_CODES = ` + JSON.stringify(CLUB_SHORT_CODES).replace(/</g, '\\u003c') + `;
     window.CLUB_BADGES = ` + JSON.stringify(CLUB_BADGES).replace(/</g, '\\u003c') + `;
     window.TRANSFERS = ` + JSON.stringify(transfers).replace(/</g, '\\u003c') + `;
@@ -1308,14 +1333,58 @@ const htmlContent = `<!DOCTYPE html>
         return;
       }
 
-      var results = window.PLAYERS.filter(function(p) {
+      // STEP 1: Get PLAYERS results (top lists)
+      var playersResults = window.PLAYERS.filter(function(p) {
         return p.spieler.toLowerCase().indexOf(query) !== -1;
       });
 
-      var inResults = {};
-      results.forEach(function(p) { inResults[p.spieler.toLowerCase()] = true; });
-      var neuzugaenge = ((window.TRANSFERS && window.TRANSFERS.zugaenge) || []).filter(function(t) {
-        return t.spieler && t.spieler.toLowerCase().indexOf(query) !== -1 && !inResults[t.spieler.toLowerCase()];
+      // Track unique players by name (lowercase)
+      var allResultsByName = {};
+      playersResults.forEach(function(p) {
+        var key = p.spieler.toLowerCase();
+        allResultsByName[key] = p;
+      });
+
+      // STEP 2: Get KADER results not in PLAYERS
+      var kaderResults = (window.KADER && window.KADER.spieler || []).filter(function(k) {
+        return k.spieler && k.spieler.toLowerCase().indexOf(query) !== -1;
+      }).filter(function(k) {
+        var key = k.spieler.toLowerCase();
+        return !allResultsByName[key]; // Not in PLAYERS
+      }).map(function(k) {
+        // Normalize to Player format
+        var key = k.spieler.toLowerCase();
+        var result = {
+          spieler: k.spieler,
+          club: k.club,
+          marktwert: k.marktwert || null,
+          punkte: k.punkte !== undefined ? k.punkte : null,
+          einsaetze: k.einsaetze !== undefined ? k.einsaetze : null,
+          punkteProSpiel: k.punkteProSpiel !== undefined ? k.punkteProSpiel : null,
+          punkteProMio: null, // Will be calculated if needed
+          veraenderung: null,
+          geheimtippScore: null,
+          istTorhueter: k.position === 'Torwart',
+          position: k.position || null,
+          datum: null
+        };
+        // Calculate punkteProMio if we have both values
+        if (result.punkte !== null && result.marktwert !== null && result.marktwert > 0) {
+          var mio = result.marktwert / 1000000;
+          result.punkteProMio = Math.round((result.punkte / mio) * 10) / 10;
+        }
+        allResultsByName[key] = result;
+        return result;
+      });
+
+      // STEP 3: Get TRANSFERS Zugänge not in PLAYERS or KADER
+      var transfersZugaenge = ((window.TRANSFERS && window.TRANSFERS.zugaenge) || []).filter(function(t) {
+        return t.spieler && t.spieler.toLowerCase().indexOf(query) !== -1;
+      });
+
+      var transfersResults = transfersZugaenge.filter(function(t) {
+        var key = t.spieler.toLowerCase();
+        return !allResultsByName[key]; // Not in PLAYERS or KADER
       }).map(function(t) {
         return {
           spieler: t.spieler,
@@ -1334,7 +1403,20 @@ const htmlContent = `<!DOCTYPE html>
         };
       });
 
-      renderDetailCards(results.concat(neuzugaenge));
+      // STEP 4: Check if any KADER-Treffer is also in TRANSFERS.zugaenge
+      transfersZugaenge.forEach(function(t) {
+        var key = t.spieler.toLowerCase();
+        if (allResultsByName[key] && allResultsByName[key].position && !allResultsByName[key].istNeuzugang) {
+          // This is a KADER player who is also a transfer
+          allResultsByName[key].istNeuzugang = true;
+          allResultsByName[key].datum = t.datum;
+        }
+      });
+
+      // Combine all results
+      var allResults = playersResults.concat(kaderResults).concat(transfersResults);
+
+      renderDetailCards(allResults);
       searchArea.classList.add('active');
       tabsArea.style.display = 'none';
     }
@@ -1395,7 +1477,7 @@ const htmlContent = `<!DOCTYPE html>
         fields.className = 'card-fields';
 
         fields.appendChild(createCardField('Marktwert', formatMarktwert(p.marktwert)));
-        if (p.istNeuzugang && p.position) {
+        if (p.position) {
           fields.appendChild(createCardField('Position', p.position));
         }
         fields.appendChild(createCardField('Punkte', String(p.punkte !== undefined && p.punkte !== null ? p.punkte : 'N/A')));

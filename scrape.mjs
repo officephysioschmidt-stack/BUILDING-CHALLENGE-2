@@ -360,6 +360,187 @@ function consolidatePlayers(winnerLoserData, pointsData, goalkeepers) {
 }
 
 /**
+ * Scrape squad/squad/kader from all 20 clubs
+ */
+async function scrapeSquads() {
+  const url = 'https://stats.comunio.de/squad';
+  console.log(`\n📥 Fetching squad overview from ${url}...`);
+
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    const $ = load(html);
+
+    // Extract 20 club links from a[href^="/squad/"]
+    const clubLinks = new Set();
+    $('a[href^="/squad/"]').each((idx, elem) => {
+      const href = $(elem).attr('href');
+      if (href) {
+        clubLinks.add(href);
+      }
+    });
+
+    const uniqueClubLinks = Array.from(clubLinks).slice(0, 20);
+    console.log(`✓ Found ${uniqueClubLinks.length} club links\n`);
+
+    const allPlayers = [];
+    // Dead club ids (relegated teams) serve the default squad page again —
+    // detect by identical player-name signature and skip the duplicate.
+    const seenSignatures = new Set();
+
+    // Scrape each club sequentially with delay
+    for (let i = 0; i < uniqueClubLinks.length; i++) {
+      const clubLink = uniqueClubLinks[i];
+      const clubUrl = 'https://stats.comunio.de' + clubLink;
+
+      console.log(`  [${i + 1}/${uniqueClubLinks.length}] Fetching ${clubUrl}...`);
+
+      try {
+        const clubResponse = await fetch(clubUrl, {
+          headers: { 'User-Agent': USER_AGENT },
+        });
+
+        if (!clubResponse.ok) {
+          console.log(`    ⚠ HTTP ${clubResponse.status}, skipping`);
+          await delay(800);
+          continue;
+        }
+
+        const clubHtml = await clubResponse.text();
+        const $club = load(clubHtml);
+
+        // Extract club name from URL slug (primary source)
+        // Format: /squad/123-Club+Name → extract "Club Name" (after dash)
+        let clubName = null;
+        const match = clubLink.match(/\/squad\/\d+-(.+)$/);
+        if (match) {
+          clubName = decodeURIComponent(match[1]).replace(/\+/g, ' ');
+        }
+
+        // Fallback: try h1, h2 if slug decode failed
+        if (!clubName || clubName.length === 0) {
+          const h1 = $club('h1').first().text().trim();
+          const h2 = $club('h2').first().text().trim();
+          clubName = (h1 || h2 || null);
+        }
+
+        if (!clubName) {
+          console.log(`    ⚠ Could not extract club name, skipping`);
+          await delay(800);
+          continue;
+        }
+
+        // Find table with header containing both "Spieler" and "Marktwert"
+        const tables = $club('table');
+        let playersTable = null;
+
+        tables.each((tableIdx, tableElem) => {
+          if (playersTable) return; // Already found
+          const $table = $club(tableElem);
+          const headerRow = $table.find('tr').first();
+          const headerText = headerRow.text().toLowerCase();
+
+          if (headerText.includes('spieler') && headerText.includes('marktwert')) {
+            playersTable = $table;
+          }
+        });
+
+        if (!playersTable) {
+          console.log(`    ⚠ Player table not found, skipping`);
+          await delay(800);
+          continue;
+        }
+
+        const clubPlayers = [];
+
+        // Fixed columns, verified live 23.07.2026:
+        // td0 icon | td1 Spieler | td2 Abzeichen | td3 Pkt. | td4 Einsätze "22 (22)"
+        // td5 Punkte pro Spiel | td6 Schüsse | td7 Pass% | td8 Zweikampf% | td9 Marktwert
+        playersTable.find('tr').each((rowIdx, row) => {
+          if (rowIdx === 0) return; // Skip header
+
+          const $row = $club(row);
+          const tds = $row.find('td');
+          if (tds.length < 10) return;
+
+          const spielerText = $club(tds.eq(1)).text().trim();
+          if (!spielerText) return;
+
+          let position = null;
+          const positions = ['Torwart', 'Abwehr', 'Mittelfeld', 'Sturm'];
+          $row.find('img').each((imgIdx, imgElem) => {
+            const alt = $club(imgElem).attr('alt') || '';
+            if (positions.includes(alt)) position = alt;
+          });
+
+          const punkteText = $club(tds.eq(3)).text().trim();
+          const punkte = punkteText === '-' ? null : parseGermanNumber(punkteText);
+
+          const einsaetzeText = $club(tds.eq(4)).text().trim();
+          const einsaetzeMatch = einsaetzeText.match(/^(\d+)/);
+          const einsaetze = einsaetzeMatch ? parseInt(einsaetzeMatch[1]) : null;
+
+          const ppsText = $club(tds.eq(5)).text().trim();
+          const punkteProSpiel = ppsText === '-' ? null : parseGermanNumber(ppsText);
+
+          const marktwert = parseGermanNumber($club(tds.eq(9)).text().trim());
+
+          clubPlayers.push({
+            spieler: spielerText,
+            position: position,
+            punkte: punkte,
+            einsaetze: einsaetze,
+            punkteProSpiel: punkteProSpiel,
+            marktwert: marktwert,
+            club: clubName,
+          });
+        });
+
+        const signature = clubPlayers.map(p => p.spieler).join('|');
+        if (clubPlayers.length > 0 && seenSignatures.has(signature)) {
+          console.log(`    ⚠ ${clubName}: identical squad already scraped (dead club id) — skipped`);
+          await delay(800);
+          continue;
+        }
+        seenSignatures.add(signature);
+        allPlayers.push(...clubPlayers);
+
+        console.log(`    ✓ Extracted ${clubPlayers.length} players from ${clubName}`);
+        await delay(800);
+
+      } catch (error) {
+        console.log(`    ⚠ Error fetching club: ${error.message}`);
+        await delay(800);
+      }
+    }
+
+    console.log(`\n✓ Squad scrape complete: ${allPlayers.length} total players from ${uniqueClubLinks.length} clubs`);
+
+    // Plausibility check
+    const noMarktwert = allPlayers.filter(p => !p.marktwert).length;
+    const noPosition = allPlayers.filter(p => !p.position).length;
+    console.log(`  Plausibility: ${noMarktwert} without marktwert, ${noPosition} without position\n`);
+
+    return {
+      stand: new Date().toISOString(),
+      spieler: allPlayers,
+    };
+
+  } catch (error) {
+    console.log(`⚠ Squad scrape failed: ${error.message}`);
+    console.log('  Continuing with empty squad data\n');
+    return { stand: new Date().toISOString(), spieler: [] };
+  }
+}
+
+/**
  * Scrape Transfers page (Zugänge and Abgänge)
  */
 async function scrapeTransfers() {
@@ -506,6 +687,9 @@ async function main() {
     const goalkeepers = await scrapeGoalkeepers();
     await delay(800);
 
+    const kader = await scrapeSquads();
+    await delay(800);
+
     const transfers = await scrapeTransfers();
     await delay(800);
 
@@ -534,6 +718,17 @@ async function main() {
       console.log('⚠ Transfers empty — keeping previous data/transfers.json');
     }
 
+    // Save kader data — keep previous file if today's scrape came back empty
+    const kaderEmpty = kader.spieler.length === 0;
+    if (!kaderEmpty || !fs.existsSync('data/kader.json')) {
+      fs.writeFileSync(
+        'data/kader.json',
+        JSON.stringify(kader, null, 2)
+      );
+    } else {
+      console.log('⚠ Kader empty — keeping previous data/kader.json');
+    }
+
     console.log('\n' + '='.repeat(80));
     console.log('✓ Consolidation Complete\n');
     console.log('📊 Statistics:');
@@ -544,6 +739,7 @@ async function main() {
     console.log(`  Points matched to Winner/Loser: ${stats.pointsMatched}`);
     console.log(`  Points unmatched: ${stats.pointsUnmatched.length}`);
     console.log(`  Total consolidated records: ${stats.consolidated}`);
+    console.log(`  Squad (Kader) players: ${kader.spieler.length}`);
     console.log(`  Transfers - Zugänge: ${transfers.zugaenge.length}`);
     console.log(`  Transfers - Abgänge: ${transfers.abgaenge.length}`);
 
@@ -567,6 +763,7 @@ async function main() {
     });
 
     console.log(`✓ Saved to data/players.json`);
+    console.log(`✓ Saved to data/kader.json`);
     console.log(`✓ Saved to data/transfers.json`);
 
   } catch (error) {
