@@ -903,6 +903,36 @@ const htmlContent = `<!DOCTYPE html>
       color: var(--text-secondary);
       line-height: 1.6;
     }
+
+    /* Legende / Kennzahl-Erklärungen (funktioniert auf Desktop + Handy) */
+    .legend {
+      margin: 0 20px 16px;
+      background: var(--bg-row-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .legend > summary {
+      padding: 12px 16px;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--accent);
+      list-style: none;
+      user-select: none;
+    }
+    .legend > summary::-webkit-details-marker { display: none; }
+    .legend[open] > summary { border-bottom: 1px solid var(--border); }
+    .legend-body {
+      padding: 12px 16px;
+      font-size: 0.9em;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
+    .legend-body p { margin-bottom: 8px; }
+    .legend-body p:last-child { margin-bottom: 0; }
+    .legend-body strong { color: var(--text-primary); }
+    .legend-body .pos { color: var(--positive); }
+    .legend-body .neg { color: var(--negative); }
   </style>
 </head>
 <body>
@@ -922,6 +952,18 @@ const htmlContent = `<!DOCTYPE html>
         <input type="text" inputmode="decimal" id="budgetFilter" placeholder="Leer = kein Limit">
       </div>
     </div>
+
+    <details class="legend">
+      <summary>ℹ️ Was bedeuten die Werte?</summary>
+      <div class="legend-body">
+        <p><strong>Geheimtipp-Score (0–100)</strong> — Mischung aus „Punkte pro Mio" und Marktwert-Momentum, je zur Hälfte. Höher = besserer Kauftipp. Relativ skaliert: der aktuell beste Kandidat hat 100.</p>
+        <p><strong>Marktwert</strong> — aktueller Comunio-Wert des Spielers.</p>
+        <p><strong>Punkte/Mio</strong> — Comunio-Punkte je Mio Marktwert. Hoch = viel Leistung fürs Geld.</p>
+        <p><strong>Punkte · Punkte/Spiel · Einsätze</strong> — Saison-Ausbeute (Tab Value-Picks).</p>
+        <p><strong>Momentum · Veränderung</strong> — Marktwert-Trend im gewählten Zeitraum. <span class="pos">Grün = steigt</span>, <span class="neg">Rot = fällt</span>.</p>
+        <p><strong>⭐ Mein Kader</strong> — Spieler merken; im Tab „Mein Kader" siehst du gebündelt ihren Marktwert-Trend.</p>
+      </div>
+    </details>
 
     <div id="searchResultsArea" class="search-results">
       <div id="searchResultsGrid" class="cards-grid"></div>
