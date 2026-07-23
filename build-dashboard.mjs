@@ -836,6 +836,66 @@ const htmlContent = `<!DOCTYPE html>
         grid-template-columns: 1fr;
       }
     }
+
+    /* Mein Kader (Watchlist) */
+    #kaderCount {
+      pointer-events: none;
+      opacity: 0.85;
+      font-weight: 400;
+    }
+
+    .kader-toggle {
+      align-self: flex-start;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.85em;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .kader-toggle:hover {
+      background: rgba(62, 156, 118, 0.12);
+    }
+
+    .kader-toggle.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .kader-signal {
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.9em;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .kader-signal.positive {
+      background: rgba(76, 175, 125, 0.15);
+      color: var(--positive);
+    }
+
+    .kader-signal.negative {
+      background: rgba(224, 102, 95, 0.15);
+      color: var(--negative);
+    }
+
+    .kader-signal.neutral {
+      background: var(--bg-row-alt);
+      color: var(--text-secondary);
+    }
+
+    .kader-empty {
+      display: none;
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -865,6 +925,7 @@ const htmlContent = `<!DOCTYPE html>
       <button class="tab-button active" data-tab="geheimtipps">GEHEIMTIPPS</button>
       <button class="tab-button" data-tab="momentum">MOMENTUM</button>
       <button class="tab-button" data-tab="value-picks">VALUE-PICKS</button>
+      <button class="tab-button" data-tab="mein-kader">MEIN KADER <span id="kaderCount">(0)</span></button>
     </div>
 
     <div id="geheimtipps" class="tab-content active">
@@ -937,6 +998,15 @@ const htmlContent = `<!DOCTYPE html>
       <div id="value-picksMobileCards"></div>
       <div class="stats-summary" id="valueStats"></div>
     </div>
+
+    <div id="mein-kader" class="tab-content">
+      <div id="meinKaderEmpty" class="kader-empty">
+        Noch keine Spieler im Kader.<br>
+        Such oben einen Spieler und tippe auf „☆ Zum Kader", um ihn hier zu sammeln.
+      </div>
+      <div id="meinKaderGrid" class="cards-grid"></div>
+      <div class="stats-summary" id="meinKaderStats"></div>
+    </div>
     </div>
   </div>
 
@@ -958,6 +1028,7 @@ const htmlContent = `<!DOCTYPE html>
       setupSwipeGestures();
       setupTooltips();
       renderGeheimtippsTable();
+      updateKaderCount();
     });
 
     function setupTooltips() {
@@ -1023,8 +1094,10 @@ const htmlContent = `<!DOCTYPE html>
             renderGeheimtippsTable();
           } else if (currentTab === 'momentum') {
             renderMomentumTable();
-          } else {
+          } else if (currentTab === 'value-picks') {
             renderValueTable();
+          } else if (currentTab === 'mein-kader') {
+            renderMeinKaderTable();
           }
         });
       });
@@ -1036,8 +1109,10 @@ const htmlContent = `<!DOCTYPE html>
           renderGeheimtippsTable();
         } else if (currentTab === 'momentum') {
           renderMomentumTable();
-        } else {
+        } else if (currentTab === 'value-picks') {
           renderValueTable();
+        } else if (currentTab === 'mein-kader') {
+          renderMeinKaderTable();
         }
       });
       document.getElementById('periodSelector').addEventListener('change', renderMomentumTable);
@@ -1065,8 +1140,8 @@ const htmlContent = `<!DOCTYPE html>
       tabsArea.style.display = 'none';
     }
 
-    function renderDetailCards(players) {
-      var grid = document.getElementById('searchResultsGrid');
+    function renderDetailCards(players, gridId, showSignal) {
+      var grid = document.getElementById(gridId || 'searchResultsGrid');
       grid.innerHTML = '';
 
       if (players.length === 0) {
@@ -1094,6 +1169,26 @@ const htmlContent = `<!DOCTYPE html>
         header.appendChild(name);
         header.appendChild(club);
         card.appendChild(header);
+
+        var kaderBtn = document.createElement('button');
+        kaderBtn.className = 'kader-toggle' + (isInKader(p) ? ' active' : '');
+        kaderBtn.textContent = isInKader(p) ? '★ Im Kader' : '☆ Zum Kader';
+        kaderBtn.addEventListener('click', function() {
+          toggleKader(p);
+          kaderBtn.className = 'kader-toggle' + (isInKader(p) ? ' active' : '');
+          kaderBtn.textContent = isInKader(p) ? '★ Im Kader' : '☆ Zum Kader';
+          updateKaderCount();
+          if (currentTab === 'mein-kader') renderMeinKaderTable();
+        });
+        card.appendChild(kaderBtn);
+
+        if (showSignal) {
+          var signal = getKaderSignal(p);
+          var signalEl = document.createElement('div');
+          signalEl.className = 'kader-signal ' + signal.className;
+          signalEl.textContent = signal.text;
+          card.appendChild(signalEl);
+        }
 
         var fields = document.createElement('div');
         fields.className = 'card-fields';
@@ -1633,6 +1728,92 @@ const htmlContent = `<!DOCTYPE html>
       setupTableSorting('valueTable', renderValueTable);
       var totalWithPoints = window.PLAYERS.filter(function(p) { return p.punkte; }).length;
       document.getElementById('valueStats').textContent = 'Zeige ' + filtered.length + ' von ' + totalWithPoints + ' Spielern mit Punkten';
+    }
+
+    /* ===== Mein Kader (Watchlist, localStorage) ===== */
+    var KADER_STORAGE_KEY = 'comunioMeinKader';
+
+    function kaderKey(p) {
+      return p.spieler + '|' + p.club;
+    }
+
+    function getKader() {
+      try {
+        var raw = window.localStorage.getItem(KADER_STORAGE_KEY);
+        var arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveKader(arr) {
+      try {
+        window.localStorage.setItem(KADER_STORAGE_KEY, JSON.stringify(arr));
+      } catch (e) { /* localStorage nicht verfügbar – Kader bleibt für diese Sitzung leer */ }
+    }
+
+    function isInKader(p) {
+      return getKader().indexOf(kaderKey(p)) !== -1;
+    }
+
+    function toggleKader(p) {
+      var arr = getKader();
+      var key = kaderKey(p);
+      var idx = arr.indexOf(key);
+      if (idx === -1) {
+        arr.push(key);
+      } else {
+        arr.splice(idx, 1);
+      }
+      saveKader(arr);
+    }
+
+    function updateKaderCount() {
+      var el = document.getElementById('kaderCount');
+      if (el) el.textContent = '(' + getKader().length + ')';
+    }
+
+    function getKaderSignal(p) {
+      var wk = (p.veraenderung && p.veraenderung.vorwoche) ? p.veraenderung.vorwoche.prozent : null;
+      var dy = (p.veraenderung && p.veraenderung.vortag) ? p.veraenderung.vortag.prozent : null;
+      var trend = wk !== null ? wk : dy;
+      var periode = wk !== null ? 'Woche' : 'Tag';
+      if (trend === null) {
+        return { text: '– keine Trenddaten', className: 'neutral' };
+      }
+      var pct = (trend >= 0 ? '+' : '') + trend + '% / ' + periode;
+      if (trend >= 2) {
+        return { text: '✓ Halten – Marktwert steigt (' + pct + ')', className: 'positive' };
+      }
+      if (trend <= -2) {
+        return { text: '⚠ Verkaufen erwägen – Marktwert fällt (' + pct + ')', className: 'negative' };
+      }
+      return { text: '→ Halten – stabil (' + pct + ')', className: 'neutral' };
+    }
+
+    function renderMeinKaderTable() {
+      var kader = getKader();
+      var grid = document.getElementById('meinKaderGrid');
+      var empty = document.getElementById('meinKaderEmpty');
+      var stats = document.getElementById('meinKaderStats');
+
+      var kaderPlayers = window.PLAYERS.filter(function(p) {
+        return kader.indexOf(kaderKey(p)) !== -1;
+      });
+
+      if (kaderPlayers.length === 0) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        stats.textContent = '';
+      } else {
+        empty.style.display = 'none';
+        renderDetailCards(kaderPlayers, 'meinKaderGrid', true);
+        var steigt = kaderPlayers.filter(function(p) { return getKaderSignal(p).className === 'positive'; }).length;
+        var faellt = kaderPlayers.filter(function(p) { return getKaderSignal(p).className === 'negative'; }).length;
+        stats.textContent = kaderPlayers.length + ' Spieler im Kader · ' + steigt + ' steigen · ' + faellt + ' fallen';
+      }
+      updateKaderCount();
     }
   </script>
 </body>
