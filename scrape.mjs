@@ -369,6 +369,7 @@ async function scrapeSquads() {
   try {
     const response = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
@@ -405,6 +406,7 @@ async function scrapeSquads() {
       try {
         const clubResponse = await fetch(clubUrl, {
           headers: { 'User-Agent': USER_AGENT },
+          signal: AbortSignal.timeout(10000),
         });
 
         if (!clubResponse.ok) {
@@ -700,7 +702,10 @@ async function scrapeNews(playerList) {
       const q = `intitle:${surname} ${p.club} Transfer when:3d`;
       const url = 'https://news.google.com/rss/search?q=' + encodeURIComponent(q) + '&hl=de&gl=DE&ceid=DE:de';
       try {
-        const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+        const res = await fetch(url, {
+          headers: { 'User-Agent': USER_AGENT },
+          signal: AbortSignal.timeout(10000),
+        });
         if (res.ok) {
           const $ = load(await res.text(), { xmlMode: true });
           const items = $('item');

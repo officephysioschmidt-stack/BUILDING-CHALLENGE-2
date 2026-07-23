@@ -3,6 +3,13 @@ import fs from 'fs';
 // Read players data
 let players = JSON.parse(fs.readFileSync('data/players.json', 'utf-8'));
 
+// Guard for the unattended daily cron: never deploy a near-empty dashboard.
+// A failed build keeps yesterday's deploy live and makes the Actions run red.
+if (!Array.isArray(players) || players.length < 50) {
+  console.error(`✗ players.json has only ${Array.isArray(players) ? players.length : 0} entries (expected ~150+) — aborting build to protect the live dashboard`);
+  process.exit(1);
+}
+
 // Read kader (squad) data
 let kader = {};
 try {
@@ -1354,42 +1361,24 @@ const htmlContent = `<!DOCTYPE html>
         return p.spieler.toLowerCase().indexOf(query) !== -1;
       });
 
-      // Track unique players by name (lowercase)
+      // Track unique players by name+club (lowercase) — name alone would
+      // merge namesakes playing for different clubs.
+      var dedupKey = function(p) {
+        return p.spieler.toLowerCase() + '|' + (p.club || '').toLowerCase();
+      };
       var allResultsByName = {};
       playersResults.forEach(function(p) {
-        var key = p.spieler.toLowerCase();
-        allResultsByName[key] = p;
+        allResultsByName[dedupKey(p)] = p;
       });
 
       // STEP 2: Get KADER results not in PLAYERS
       var kaderResults = (window.KADER && window.KADER.spieler || []).filter(function(k) {
         return k.spieler && k.spieler.toLowerCase().indexOf(query) !== -1;
       }).filter(function(k) {
-        var key = k.spieler.toLowerCase();
-        return !allResultsByName[key]; // Not in PLAYERS
+        return !allResultsByName[dedupKey(k)]; // Not in PLAYERS
       }).map(function(k) {
-        // Normalize to Player format
-        var key = k.spieler.toLowerCase();
-        var result = {
-          spieler: k.spieler,
-          club: k.club,
-          marktwert: k.marktwert || null,
-          punkte: k.punkte !== undefined ? k.punkte : null,
-          einsaetze: k.einsaetze !== undefined ? k.einsaetze : null,
-          punkteProSpiel: k.punkteProSpiel !== undefined ? k.punkteProSpiel : null,
-          punkteProMio: null, // Will be calculated if needed
-          veraenderung: null,
-          geheimtippScore: null,
-          istTorhueter: k.position === 'Torwart',
-          position: k.position || null,
-          datum: null
-        };
-        // Calculate punkteProMio if we have both values
-        if (result.punkte !== null && result.marktwert !== null && result.marktwert > 0) {
-          var mio = result.marktwert / 1000000;
-          result.punkteProMio = Math.round((result.punkte / mio) * 10) / 10;
-        }
-        allResultsByName[key] = result;
+        var result = normalizeKaderPlayer(k);
+        allResultsByName[dedupKey(k)] = result;
         return result;
       });
 
@@ -1399,8 +1388,7 @@ const htmlContent = `<!DOCTYPE html>
       });
 
       var transfersResults = transfersZugaenge.filter(function(t) {
-        var key = t.spieler.toLowerCase();
-        return !allResultsByName[key]; // Not in PLAYERS or KADER
+        return !allResultsByName[dedupKey(t)]; // Not in PLAYERS or KADER
       }).map(function(t) {
         return {
           spieler: t.spieler,
@@ -1421,7 +1409,7 @@ const htmlContent = `<!DOCTYPE html>
 
       // STEP 4: Check if any KADER-Treffer is also in TRANSFERS.zugaenge
       transfersZugaenge.forEach(function(t) {
-        var key = t.spieler.toLowerCase();
+        var key = dedupKey(t);
         if (allResultsByName[key] && allResultsByName[key].position && !allResultsByName[key].istNeuzugang) {
           // This is a KADER player who is also a transfer
           allResultsByName[key].istNeuzugang = true;
@@ -1435,6 +1423,28 @@ const htmlContent = `<!DOCTYPE html>
       renderDetailCards(allResults);
       searchArea.classList.add('active');
       tabsArea.style.display = 'none';
+    }
+
+    function normalizeKaderPlayer(k) {
+      var result = {
+        spieler: k.spieler,
+        club: k.club,
+        marktwert: k.marktwert || null,
+        punkte: k.punkte !== undefined ? k.punkte : null,
+        einsaetze: k.einsaetze !== undefined ? k.einsaetze : null,
+        punkteProSpiel: k.punkteProSpiel !== undefined ? k.punkteProSpiel : null,
+        punkteProMio: null,
+        veraenderung: null,
+        geheimtippScore: null,
+        istTorhueter: k.position === 'Torwart',
+        position: k.position || null,
+        datum: null
+      };
+      if (result.punkte !== null && result.marktwert !== null && result.marktwert > 0) {
+        var mio = result.marktwert / 1000000;
+        result.punkteProMio = Math.round((result.punkte / mio) * 10) / 10;
+      }
+      return result;
     }
 
     function makeNewsMarker(p) {
@@ -2339,11 +2349,30 @@ const htmlContent = `<!DOCTYPE html>
       saveKader(arr);
     }
 
+    // Starred players matched against PLAYERS first (full trend data),
+    // then against the full KADER so squad-only players work too.
+    function getKaderMatches() {
+      var kader = getKader();
+      var matched = window.PLAYERS.filter(function(p) {
+        return kader.indexOf(kaderKey(p)) !== -1;
+      });
+      var matchedKeys = {};
+      matched.forEach(function(p) { matchedKeys[kaderKey(p)] = true; });
+      (window.KADER && window.KADER.spieler || []).forEach(function(k) {
+        var key = kaderKey(k);
+        if (kader.indexOf(key) !== -1 && !matchedKeys[key]) {
+          matched.push(normalizeKaderPlayer(k));
+          matchedKeys[key] = true;
+        }
+      });
+      return matched;
+    }
+
     function updateKaderCount() {
       var el = document.getElementById('kaderCount');
       if (!el) return;
       var kader = getKader();
-      var visible = window.PLAYERS.filter(function(p) { return kader.indexOf(kaderKey(p)) !== -1; }).length;
+      var visible = getKaderMatches().length;
       el.textContent = (kader.length === visible) ? '(' + visible + ')' : '(' + visible + '/' + kader.length + ')';
     }
 
@@ -2392,9 +2421,7 @@ const htmlContent = `<!DOCTYPE html>
       var empty = document.getElementById('meinKaderEmpty');
       var stats = document.getElementById('meinKaderStats');
 
-      var kaderPlayers = window.PLAYERS.filter(function(p) {
-        return kader.indexOf(kaderKey(p)) !== -1;
-      });
+      var kaderPlayers = getKaderMatches();
       var missing = kader.length - kaderPlayers.length;
 
       if (kaderPlayers.length === 0) {
@@ -2402,7 +2429,7 @@ const htmlContent = `<!DOCTYPE html>
         empty.style.display = 'block';
         empty.innerHTML = (kader.length === 0)
           ? 'Noch keine Spieler im Kader.<br>Such oben einen Spieler und tippe auf „☆ Zum Kader", um ihn hier zu sammeln.'
-          : 'Deine ' + kader.length + ' markierten Spieler stehen aktuell nicht in den Top-Listen — z. B. Verein gewechselt oder aus der Wertung gefallen. Sie kommen wieder, sobald sie erneut in den Listen auftauchen.';
+          : 'Deine ' + kader.length + ' markierten Spieler sind aktuell weder in den Listen noch im Liga-Kader — z. B. Verein gewechselt oder Liga verlassen.';
         stats.textContent = '';
       } else {
         empty.style.display = 'none';
