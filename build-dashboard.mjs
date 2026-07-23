@@ -1225,7 +1225,7 @@ const htmlContent = `<!DOCTYPE html>
         if (p.geheimtippScore !== null) {
           var scoreBar = document.createElement('div');
           scoreBar.className = 'card-score-bar ' + getScoreBarClass(p.geheimtippScore);
-          scoreBar.textContent = 'Score ' + p.geheimtippScore.toFixed(1);
+          scoreBar.textContent = 'Geheimtipp-Score ' + p.geheimtippScore.toFixed(1);
           card.appendChild(scoreBar);
         }
 
@@ -1304,16 +1304,12 @@ const htmlContent = `<!DOCTYPE html>
       var lastName = getLastNameFromFull(spieler);
       var clubShort = window.CLUB_SHORT_CODES[club] || club;
 
-      var googleNewsQuery = encodeURIComponent(lastName + ' ' + club + ' Transfer');
+      var newsQuery = encodeURIComponent(lastName + ' ' + club);
       var tmQuery = encodeURIComponent(lastName + ':' + clubShort);
-      var kickerQuery = encodeURIComponent(lastName + ' ' + club + ' site:kicker.de spieler');
-      var liQuery = encodeURIComponent(lastName + ' ' + club + ' site:ligainsider.de');
 
       var html = '<div class="research-buttons">';
-      html += '<a href="https://news.google.com/search?q=' + googleNewsQuery + '" target="_blank" class="research-btn">News</a>';
+      html += '<a href="https://www.google.com/search?q=' + newsQuery + '&tbm=nws&tbs=qdr:d" target="_blank" class="research-btn">News</a>';
       html += '<a href="https://www.transfermarkt.de/schnellsuche/ergebnis/schnellsuche?query=' + tmQuery + '" target="_blank" class="research-btn">TM</a>';
-      html += '<a href="https://www.google.com/search?q=' + kickerQuery + '" target="_blank" class="research-btn">Kicker</a>';
-      html += '<a href="https://www.google.com/search?q=' + liQuery + '" target="_blank" class="research-btn">LI</a>';
       html += '</div>';
       return html;
     }
@@ -1511,7 +1507,7 @@ const htmlContent = `<!DOCTYPE html>
         if (p.geheimtippScore !== null && viewType === 'geheimtipps') {
           var scoreBar = document.createElement('div');
           scoreBar.className = 'mobile-score-bar ' + getScoreBarClass(p.geheimtippScore);
-          scoreBar.textContent = p.geheimtippScore.toFixed(1);
+          scoreBar.textContent = 'Geheimtipp-Score ' + p.geheimtippScore.toFixed(1);
           card.appendChild(scoreBar);
         }
 
@@ -1872,4 +1868,4 @@ console.log(`✓ File size: ${(fs.statSync('dashboard/index.html').size / 1024).
 console.log(`✓ Embedded players: ${players.length}`);
 console.log(`✓ Qualifying Geheimtipps: ${players.filter(p => p.geheimtippScore !== null).length}`);
 console.log(`✓ Theme: Subdued Emerald Dark with CSS variables`);
-console.log(`✓ Features: Sticky headers, tooltips (hover+tap), 4 research links, numeric right-aligned`);
+console.log(`✓ Features: Sticky headers, tooltips (hover+tap), 2 research links (News 24h + TM), Mein Kader, numeric right-aligned`);
