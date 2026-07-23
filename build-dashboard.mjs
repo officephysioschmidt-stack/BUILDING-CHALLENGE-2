@@ -1011,8 +1011,8 @@ const htmlContent = `<!DOCTYPE html>
         <p><strong>⚠️ Wichtig:</strong> Der Score kennt keine Transfer-News. Ein Marktwert kann auch <em>wegen</em> Wechselgerüchten steigen — verlässt der Spieler die Liga, ist er weg. Vor dem Kauf kurz den <strong>News</strong>-Button prüfen.</p>
         <p><strong>Marktwert</strong> — aktueller Comunio-Wert des Spielers.</p>
         <p><strong>Punkte/Mio</strong> — Comunio-Punkte je Mio Marktwert. Hoch = viel Leistung fürs Geld.</p>
-        <p><strong>Punkte · Punkte/Spiel · Einsätze</strong> — Saison-Ausbeute (Tab Preis-Leistung).</p>
-        <p><strong>Momentum · Veränderung</strong> — Marktwert-Trend im gewählten Zeitraum. <span class="pos">Grün = steigt</span>, <span class="neg">Rot = fällt</span>.</p>
+        <p><strong>Punkte · Punkte/Spiel · Einsätze</strong> — Saison-Ausbeute (Tab Schnäppchen).</p>
+        <p><strong>🚀 Momentum · Veränderung</strong> — Marktwert-Trend im gewählten Zeitraum (Tab 🚀). <span class="pos">Grün = steigt</span>, <span class="neg">Rot = fällt</span>.</p>
         <p><strong>⭐ Mein Kader</strong> — Spieler merken; im Tab „Mein Kader" siehst du gebündelt ihren Marktwert-Trend.</p>
         <p><strong>Neuzugänge</strong> — Spieler, die Comunio neu in die Liga aufgenommen hat — oft noch günstig, früh beobachten. Abgänge sind aus der Liga entfernt.</p>
       </div>
@@ -1024,9 +1024,9 @@ const htmlContent = `<!DOCTYPE html>
 
     <div id="tabsArea">
       <div class="tabs">
-      <button class="tab-button active" data-tab="momentum">MOMENTUM</button>
+      <button class="tab-button active" data-tab="momentum" title="Momentum" aria-label="Momentum">🚀</button>
       <button class="tab-button" data-tab="geheimtipps">GEHEIMTIPPS</button>
-      <button class="tab-button" data-tab="value-picks">PREIS-LEISTUNG</button>
+      <button class="tab-button" data-tab="value-picks">SCHNÄPPCHEN</button>
       <button class="tab-button" data-tab="mein-kader">MEIN KADER <span id="kaderCount">(0)</span></button>
       <button class="tab-button" data-tab="neuzugaenge">NEUZUGÄNGE <span id="neuCount">(` + transfers.zugaenge.length + `)</span></button>
     </div>
@@ -1286,7 +1286,29 @@ const htmlContent = `<!DOCTYPE html>
         return p.spieler.toLowerCase().indexOf(query) !== -1;
       });
 
-      renderDetailCards(results);
+      var inResults = {};
+      results.forEach(function(p) { inResults[p.spieler.toLowerCase()] = true; });
+      var neuzugaenge = ((window.TRANSFERS && window.TRANSFERS.zugaenge) || []).filter(function(t) {
+        return t.spieler && t.spieler.toLowerCase().indexOf(query) !== -1 && !inResults[t.spieler.toLowerCase()];
+      }).map(function(t) {
+        return {
+          spieler: t.spieler,
+          club: t.club || 'N/A',
+          marktwert: t.marktwert,
+          punkte: null,
+          einsaetze: null,
+          punkteProSpiel: null,
+          punkteProMio: null,
+          veraenderung: null,
+          geheimtippScore: null,
+          istTorhueter: t.position === 'Torwart',
+          istNeuzugang: true,
+          position: t.position,
+          datum: t.datum
+        };
+      });
+
+      renderDetailCards(results.concat(neuzugaenge));
       searchArea.classList.add('active');
       tabsArea.style.display = 'none';
     }
@@ -1324,6 +1346,17 @@ const htmlContent = `<!DOCTYPE html>
 
         card.appendChild(makeKaderToggle(p, false));
 
+        if (p.istNeuzugang) {
+          var neuBadge = document.createElement('div');
+          neuBadge.textContent = 'NEUZUGANG' + (p.datum ? ' · seit ' + p.datum : '');
+          neuBadge.style.color = 'var(--positive)';
+          neuBadge.style.fontSize = '11px';
+          neuBadge.style.fontWeight = '700';
+          neuBadge.style.letterSpacing = '0.08em';
+          neuBadge.style.margin = '6px 0';
+          card.appendChild(neuBadge);
+        }
+
         if (showSignal) {
           var signal = getKaderSignal(p);
           var signalEl = document.createElement('div');
@@ -1336,6 +1369,9 @@ const htmlContent = `<!DOCTYPE html>
         fields.className = 'card-fields';
 
         fields.appendChild(createCardField('Marktwert', formatMarktwert(p.marktwert)));
+        if (p.istNeuzugang && p.position) {
+          fields.appendChild(createCardField('Position', p.position));
+        }
         fields.appendChild(createCardField('Punkte', String(p.punkte !== undefined && p.punkte !== null ? p.punkte : 'N/A')));
         fields.appendChild(createCardField('Einsätze', String(p.einsaetze || 'N/A')));
         fields.appendChild(createCardField('Punkte/Spiel', p.punkteProSpiel !== null ? p.punkteProSpiel.toFixed(2).replace('.', ',') : 'N/A'));
