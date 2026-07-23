@@ -51,8 +51,12 @@ Alles unten ist an einem Bautag (22.07.2026) neu entstanden.
   parst deutsche Zahlenformate und konsolidiert alles über einen Namens-/Vereins-Key
   zu einem Datensatz (`data/players.json`, ~158 Spieler).
 - **Dashboard** (`build-dashboard.mjs`): baut daraus eine einzelne, self-contained
-  HTML-Datei — drei Ranking-Tabs, Budget-Filter, Spielersuche, Mobile-Karten,
-  Tooltips und Deep-Links zu Transfermarkt/Recherche.
+  HTML-Datei — vier Tabs (drei Rankings + eigene „Mein Kader"-Merkliste),
+  Budget-Filter, Spielersuche, Mobile-Karten, Tooltips und Deep-Links zu
+  Transfermarkt/Recherche.
+- **„Mein Kader"**: eigene Merkliste im Browser (localStorage) — Spieler per ⭐
+  markieren und im Kader-Tab mit einem Halten-/Verkaufen-Hinweis aus dem
+  Marktwert-Trend bündeln.
 - **Geheimtipp-Score**: eigene Kennzahl aus *Punkte pro Mio Marktwert* × *Momentum*
   (Trend der Vorwoche/Vortag), die günstige, im Wert steigende Spieler hervorhebt.
 

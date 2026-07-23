@@ -866,6 +866,13 @@ const htmlContent = `<!DOCTYPE html>
       color: #fff;
     }
 
+    .kader-toggle-compact {
+      padding: 4px 9px;
+      font-size: 1.05em;
+      line-height: 1;
+      margin-right: 6px;
+    }
+
     .kader-signal {
       border-radius: 6px;
       padding: 8px 12px;
@@ -1170,17 +1177,7 @@ const htmlContent = `<!DOCTYPE html>
         header.appendChild(club);
         card.appendChild(header);
 
-        var kaderBtn = document.createElement('button');
-        kaderBtn.className = 'kader-toggle' + (isInKader(p) ? ' active' : '');
-        kaderBtn.textContent = isInKader(p) ? '★ Im Kader' : '☆ Zum Kader';
-        kaderBtn.addEventListener('click', function() {
-          toggleKader(p);
-          kaderBtn.className = 'kader-toggle' + (isInKader(p) ? ' active' : '');
-          kaderBtn.textContent = isInKader(p) ? '★ Im Kader' : '☆ Zum Kader';
-          updateKaderCount();
-          if (currentTab === 'mein-kader') renderMeinKaderTable();
-        });
-        card.appendChild(kaderBtn);
+        card.appendChild(makeKaderToggle(p, false));
 
         if (showSignal) {
           var signal = getKaderSignal(p);
@@ -1440,6 +1437,7 @@ const htmlContent = `<!DOCTYPE html>
         var td7 = document.createElement('td');
         var researchHTML = createResearchButtons(p.spieler, p.club);
         td7.innerHTML = researchHTML;
+        td7.insertBefore(makeKaderToggle(p, true), td7.firstChild);
         tr.appendChild(td7);
         tbody.appendChild(tr);
       });
@@ -1512,6 +1510,7 @@ const htmlContent = `<!DOCTYPE html>
         buttons.className = 'mobile-card-buttons';
         var researchHTML = createResearchButtons(p.spieler, p.club);
         buttons.innerHTML = researchHTML.replace('research-buttons', 'mobile-card-buttons').replace(/research-btn/g, 'mobile-card-btn');
+        buttons.insertBefore(makeKaderToggle(p, true), buttons.firstChild);
         card.appendChild(buttons);
 
         grid.appendChild(card);
@@ -1621,6 +1620,7 @@ const htmlContent = `<!DOCTYPE html>
         var td7 = document.createElement('td');
         var researchHTML = createResearchButtons(p.spieler, p.club);
         td7.innerHTML = researchHTML;
+        td7.insertBefore(makeKaderToggle(p, true), td7.firstChild);
         tr.appendChild(td7);
         tbody.appendChild(tr);
       });
@@ -1721,6 +1721,7 @@ const htmlContent = `<!DOCTYPE html>
         var td8 = document.createElement('td');
         var researchHTML = createResearchButtons(p.spieler, p.club);
         td8.innerHTML = researchHTML;
+        td8.insertBefore(makeKaderToggle(p, true), td8.firstChild);
         tr.appendChild(td8);
         tbody.appendChild(tr);
       });
@@ -1772,6 +1773,25 @@ const htmlContent = `<!DOCTYPE html>
     function updateKaderCount() {
       var el = document.getElementById('kaderCount');
       if (el) el.textContent = '(' + getKader().length + ')';
+    }
+
+    function makeKaderToggle(p, compact) {
+      var btn = document.createElement('button');
+      function apply() {
+        var active = isInKader(p);
+        btn.className = 'kader-toggle' + (compact ? ' kader-toggle-compact' : '') + (active ? ' active' : '');
+        btn.textContent = compact ? (active ? '★' : '☆') : (active ? '★ Im Kader' : '☆ Zum Kader');
+        btn.title = active ? 'Aus meinem Kader entfernen' : 'Zu meinem Kader hinzufügen';
+      }
+      apply();
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleKader(p);
+        apply();
+        updateKaderCount();
+        if (currentTab === 'mein-kader') renderMeinKaderTable();
+      });
+      return btn;
     }
 
     function getKaderSignal(p) {
