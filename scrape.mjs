@@ -672,6 +672,67 @@ function parseTransferTable($table, $, resultArray, type) {
 /**
  * Main function
  */
+/**
+ * Scrape transfer news counts per player via Google News RSS.
+ * Query: "<spieler> <club> Transfer when:3d" (German edition).
+ * Returns { "<spieler>|<club>": { count, latestTitle, latestSource } } —
+ * only players with at least one hit are included.
+ */
+async function scrapeNews(playerList) {
+  console.log(`\n📥 Fetching transfer news (Google News RSS) for ${playerList.length} players...`);
+  const news = {};
+  let done = 0;
+  let withNews = 0;
+  let errors = 0;
+
+  try {
+    for (const p of playerList) {
+      // Bail out early if the endpoint is blocked (e.g. runner IP) —
+      // no point hammering it 150+ times.
+      if (done >= 10 && errors === done) {
+        console.log('⚠ News: first 10 requests all failed — aborting news scrape');
+        return {};
+      }
+
+      // intitle: on the surname keeps precision high — the headline itself must
+      // name the player (plain queries matched 137/158 players = useless marker).
+      const surname = p.spieler.split(' ').pop();
+      const q = `intitle:${surname} ${p.club} Transfer when:3d`;
+      const url = 'https://news.google.com/rss/search?q=' + encodeURIComponent(q) + '&hl=de&gl=DE&ceid=DE:de';
+      try {
+        const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+        if (res.ok) {
+          const $ = load(await res.text(), { xmlMode: true });
+          const items = $('item');
+          if (items.length > 0) {
+            const first = items.first();
+            news[`${p.spieler}|${p.club}`] = {
+              count: items.length,
+              latestTitle: $(first).find('title').text().slice(0, 140),
+              latestSource: $(first).find('source').text(),
+            };
+            withNews++;
+          }
+        } else {
+          errors++;
+        }
+      } catch (error) {
+        errors++;
+      }
+
+      done++;
+      if (done % 25 === 0) console.log(`  ${done}/${playerList.length} queried...`);
+      await delay(400);
+    }
+
+    console.log(`✓ News scrape complete: ${withNews}/${playerList.length} players with recent transfer news (${errors} errors)\n`);
+    return news;
+  } catch (error) {
+    console.log(`⚠ News scrape failed: ${error.message} — continuing without news\n`);
+    return {};
+  }
+}
+
 async function main() {
   try {
     console.log('🚀 Starting Comunio Scraper\n');
@@ -727,6 +788,18 @@ async function main() {
       );
     } else {
       console.log('⚠ Kader empty — keeping previous data/kader.json');
+    }
+
+    // Transfer news markers — keep previous file if scrape came back empty
+    const news = await scrapeNews(Object.values(players));
+    const newsEmpty = Object.keys(news).length === 0;
+    if (!newsEmpty || !fs.existsSync('data/news.json')) {
+      fs.writeFileSync(
+        'data/news.json',
+        JSON.stringify({ stand: new Date().toISOString(), news: news }, null, 2)
+      );
+    } else {
+      console.log('⚠ News empty — keeping previous data/news.json');
     }
 
     console.log('\n' + '='.repeat(80));

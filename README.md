@@ -58,6 +58,13 @@ Alles unten ist an einem Bautag (22.07.2026) neu entstanden.
 - **Neuzugänge-Tab**: Zu- und Abgänge der Liga mit Position, Datum und
   Einstiegs-Marktwert — neue Spieler sind oft noch günstig, bevor die
   Community sie entdeckt.
+- **Volle Kader-Suche**: alle ~576 Liga-Spieler von den 18 Club-Kaderseiten,
+  nicht nur die Top-Listen — jeder Spieler ist findbar (Position, Punkte,
+  Einsätze, Punkte/Mio).
+- **📰 Transfer-News-Marker**: Google-News-RSS pro Spieler (Schlagzeile muss
+  den Namen enthalten, letzte 3 Tage) — markiert Spieler, deren Marktwert
+  gerade von echten Transfer-Gerüchten getrieben wird, mit der neuesten
+  Schlagzeile im Tooltip.
 - **„Mein Kader"**: eigene Merkliste im Browser (localStorage) — Spieler per ⭐
   markieren und im Kader-Tab gebündelt sehen, jeweils mit einem neutralen
   Marktwert-Trend-Indikator (stark steigend … stabil … stark fallend, ohne

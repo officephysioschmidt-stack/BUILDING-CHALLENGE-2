@@ -20,6 +20,15 @@ try {
   transfers = { stand: new Date().toISOString(), zugaenge: [], abgaenge: [] };
 }
 
+// Read transfer news markers (optional — dashboard works without them)
+let newsData = {};
+try {
+  newsData = JSON.parse(fs.readFileSync('data/news.json', 'utf-8'));
+  if (!newsData.news) newsData.news = {};
+} catch (e) {
+  newsData = { news: {} };
+}
+
 // Club name to short code mapping for Transfermarkt precision links
 const CLUB_SHORT_CODES = {
   '1. FC Heidenheim': 'Heidenheim',
@@ -422,6 +431,11 @@ const htmlContent = `<!DOCTYPE html>
 
     .tw-short {
       display: none;
+    }
+
+    .news-marker {
+      cursor: help;
+      font-size: 0.85em;
     }
 
     .tab-button:active {
@@ -1062,6 +1076,7 @@ const htmlContent = `<!DOCTYPE html>
         <p><strong>Punkte/Mio</strong> — Comunio-Punkte je Mio Marktwert. Hoch = viel Leistung fürs Geld.</p>
         <p><strong>Punkte · Punkte/Spiel · Einsätze</strong> — Saison-Ausbeute (Tab Schnäppchen).</p>
         <p><strong>🚀 Momentum · Veränderung</strong> — Marktwert-Trend im gewählten Zeitraum (Tab 🚀). <span class="pos">Grün = steigt</span>, <span class="neg">Rot = fällt</span>.</p>
+        <p><strong>📰 News-Marker</strong> — mindestens 3 Transfer-Schlagzeilen zu diesem Spieler in den letzten 3 Tagen (Google News). Marktwert-Sprünge haben oft hier ihre Ursache — Finger drauf/Maus drüber zeigt die neueste Schlagzeile.</p>
         <p><strong>⭐ Mein Kader</strong> — Spieler merken; im Tab „Mein Kader" siehst du gebündelt ihren Marktwert-Trend.</p>
         <p><strong>Suche</strong> — Die Suche kennt den kompletten Liga-Kader (auch Spieler ohne Top-Listen-Platz — dort fehlen dann Trend-Daten).</p>
         <p><strong>Neuzugänge</strong> — Spieler, die Comunio neu in die Liga aufgenommen hat — oft noch günstig, früh beobachten. Abgänge sind aus der Liga entfernt.</p>
@@ -1207,6 +1222,7 @@ const htmlContent = `<!DOCTYPE html>
   <script>
     window.PLAYERS = ` + JSON.stringify(players).replace(/</g, '\\u003c') + `;
     window.KADER = ` + JSON.stringify(kader).replace(/</g, '\\u003c') + `;
+    window.NEWS = ` + JSON.stringify(newsData.news).replace(/</g, '\\u003c') + `;
     window.CLUB_SHORT_CODES = ` + JSON.stringify(CLUB_SHORT_CODES).replace(/</g, '\\u003c') + `;
     window.CLUB_BADGES = ` + JSON.stringify(CLUB_BADGES).replace(/</g, '\\u003c') + `;
     window.TRANSFERS = ` + JSON.stringify(transfers).replace(/</g, '\\u003c') + `;
@@ -1421,6 +1437,16 @@ const htmlContent = `<!DOCTYPE html>
       tabsArea.style.display = 'none';
     }
 
+    function makeNewsMarker(p) {
+      var n = window.NEWS && window.NEWS[p.spieler + '|' + p.club];
+      if (!n || n.count < 3) return null;
+      var marker = document.createElement('span');
+      marker.textContent = ' 📰';
+      marker.className = 'news-marker';
+      marker.title = n.count + ' Transfer-News in 3 Tagen — neueste: ' + n.latestTitle + (n.latestSource ? ' (' + n.latestSource + ')' : '');
+      return marker;
+    }
+
     function renderDetailCards(players, gridId, showSignal) {
       var grid = document.getElementById(gridId || 'searchResultsGrid');
       grid.innerHTML = '';
@@ -1444,6 +1470,8 @@ const htmlContent = `<!DOCTYPE html>
         var name = document.createElement('div');
         name.className = 'card-name';
         name.textContent = p.spieler;
+        var cardNews = makeNewsMarker(p);
+        if (cardNews) name.appendChild(cardNews);
         var club = document.createElement('div');
         club.className = 'card-club';
         club.appendChild(makeClubBadge(p.club));
@@ -1725,6 +1753,8 @@ const htmlContent = `<!DOCTYPE html>
         var tr = document.createElement('tr');
         var td1 = document.createElement('td');
         td1.textContent = p.spieler;
+        var td1News = makeNewsMarker(p);
+        if (td1News) td1.appendChild(td1News);
         tr.appendChild(td1);
         var td2 = document.createElement('td');
         fillClubCell(td2, p.club);
@@ -1797,6 +1827,8 @@ const htmlContent = `<!DOCTYPE html>
         } else {
           name.textContent = p.spieler;
         }
+        var mobileNews = makeNewsMarker(p);
+        if (mobileNews) name.appendChild(mobileNews);
         var club = document.createElement('div');
         club.className = 'mobile-card-club';
         club.appendChild(makeClubBadge(p.club || 'N/A'));
@@ -2125,6 +2157,8 @@ const htmlContent = `<!DOCTYPE html>
         var tr = document.createElement('tr');
         var td1 = document.createElement('td');
         td1.textContent = p.spieler;
+        var td1News = makeNewsMarker(p);
+        if (td1News) td1.appendChild(td1News);
         tr.appendChild(td1);
         var td2 = document.createElement('td');
         fillClubCell(td2, p.club);
@@ -2227,6 +2261,8 @@ const htmlContent = `<!DOCTYPE html>
         var tr = document.createElement('tr');
         var td1 = document.createElement('td');
         td1.textContent = p.spieler;
+        var td1News = makeNewsMarker(p);
+        if (td1News) td1.appendChild(td1News);
         tr.appendChild(td1);
         var td2 = document.createElement('td');
         fillClubCell(td2, p.club);
