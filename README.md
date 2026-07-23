@@ -46,14 +46,18 @@ werden bei jedem Lauf frisch erzeugt.
 **Vorher:** nur die Idee und das eigene Comunio-Problem — kein Code, kein Datensatz.
 Alles unten ist an einem Bautag (22.07.2026) neu entstanden.
 
-- **Scraper** (`scrape.mjs`): liest drei öffentliche Comunio-Statistikseiten aus
-  (Gewinner/Verlierer über Tag/Woche/Monat, Punkte-Top-100, Torhüter-Top-25),
-  parst deutsche Zahlenformate und konsolidiert alles über einen Namens-/Vereins-Key
-  zu einem Datensatz (`data/players.json`, ~158 Spieler).
+- **Scraper** (`scrape.mjs`): liest vier öffentliche Comunio-Statistikseiten aus
+  (Gewinner/Verlierer über Tag/Woche/Monat, Punkte-Top-100, Torhüter-Top-25,
+  Transfers), parst deutsche Zahlenformate und konsolidiert alles über einen
+  Namens-/Vereins-Key zu einem Datensatz (`data/players.json`, ~158 Spieler,
+  plus `data/transfers.json`).
 - **Dashboard** (`build-dashboard.mjs`): baut daraus eine einzelne, self-contained
-  HTML-Datei — vier Tabs (drei Rankings + eigene „Mein Kader"-Merkliste),
-  Budget-Filter, Spielersuche, Mobile-Karten, Tooltips und Deep-Links zu
-  Transfermarkt/Recherche.
+  HTML-Datei — fünf Tabs (drei Rankings, eigene „Mein Kader"-Merkliste,
+  Neuzugänge), Budget-Filter, Spielersuche, Mobile-Karten, Tooltips und
+  Deep-Links zu Transfermarkt/Recherche.
+- **Neuzugänge-Tab**: Zu- und Abgänge der Liga mit Position, Datum und
+  Einstiegs-Marktwert — neue Spieler sind oft noch günstig, bevor die
+  Community sie entdeckt.
 - **„Mein Kader"**: eigene Merkliste im Browser (localStorage) — Spieler per ⭐
   markieren und im Kader-Tab gebündelt sehen, jeweils mit einem neutralen
   Marktwert-Trend-Indikator (stark steigend … stabil … stark fallend, ohne

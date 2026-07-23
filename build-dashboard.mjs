@@ -3,6 +3,14 @@ import fs from 'fs';
 // Read players data
 let players = JSON.parse(fs.readFileSync('data/players.json', 'utf-8'));
 
+// Read transfers data
+let transfers = {};
+try {
+  transfers = JSON.parse(fs.readFileSync('data/transfers.json', 'utf-8'));
+} catch (e) {
+  transfers = { stand: new Date().toISOString(), zugaenge: [], abgaenge: [] };
+}
+
 // Club name to short code mapping for Transfermarkt precision links
 const CLUB_SHORT_CODES = {
   '1. FC Heidenheim': 'Heidenheim',
@@ -1006,6 +1014,7 @@ const htmlContent = `<!DOCTYPE html>
         <p><strong>Punkte · Punkte/Spiel · Einsätze</strong> — Saison-Ausbeute (Tab Preis-Leistung).</p>
         <p><strong>Momentum · Veränderung</strong> — Marktwert-Trend im gewählten Zeitraum. <span class="pos">Grün = steigt</span>, <span class="neg">Rot = fällt</span>.</p>
         <p><strong>⭐ Mein Kader</strong> — Spieler merken; im Tab „Mein Kader" siehst du gebündelt ihren Marktwert-Trend.</p>
+        <p><strong>Neuzugänge</strong> — Spieler, die Comunio neu in die Liga aufgenommen hat — oft noch günstig, früh beobachten. Abgänge sind aus der Liga entfernt.</p>
       </div>
     </details>
 
@@ -1019,6 +1028,7 @@ const htmlContent = `<!DOCTYPE html>
       <button class="tab-button" data-tab="geheimtipps">GEHEIMTIPPS</button>
       <button class="tab-button" data-tab="value-picks">PREIS-LEISTUNG</button>
       <button class="tab-button" data-tab="mein-kader">MEIN KADER <span id="kaderCount">(0)</span></button>
+      <button class="tab-button" data-tab="neuzugaenge">NEUZUGÄNGE <span id="neuCount">(` + transfers.zugaenge.length + `)</span></button>
     </div>
 
     <div id="geheimtipps" class="tab-content">
@@ -1106,6 +1116,41 @@ const htmlContent = `<!DOCTYPE html>
       <div id="meinKaderGrid" class="cards-grid"></div>
       <div class="stats-summary" id="meinKaderStats"></div>
     </div>
+
+    <div id="neuzugaenge" class="tab-content">
+      <h3 style="padding: 0 0 16px 0; border-bottom: 1px solid var(--border); color: var(--accent); margin-bottom: 20px;">Zugänge — neu in der Liga</h3>
+      <table id="transfersZugaengeTable">
+        <thead>
+          <tr>
+            <th class="sortable">Datum</th>
+            <th class="sortable">Spieler</th>
+            <th class="sortable">Pos.</th>
+            <th class="sortable">Club</th>
+            <th class="sortable numeric">Marktwert</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div id="transfers-zugaengeMobileCards"></div>
+      <div class="stats-summary" id="transfersZugaengeStats"></div>
+
+      <h3 style="padding: 20px 0 16px 0; border-bottom: 1px solid var(--border); color: var(--accent); margin-bottom: 20px; margin-top: 20px;">Abgänge — nicht mehr in der Liga</h3>
+      <table id="transfersAbgaengeTable">
+        <thead>
+          <tr>
+            <th class="sortable">Datum</th>
+            <th class="sortable">Spieler</th>
+            <th class="sortable">Pos.</th>
+            <th class="sortable">Club</th>
+            <th class="sortable numeric">Marktwert</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div id="transfers-abgaengeMobileCards"></div>
+      <div class="stats-summary" id="transfersAbgaengeStats"></div>
+    </div>
     </div>
   </div>
 
@@ -1113,6 +1158,7 @@ const htmlContent = `<!DOCTYPE html>
     window.PLAYERS = ` + JSON.stringify(players) + `;
     window.CLUB_SHORT_CODES = ` + JSON.stringify(CLUB_SHORT_CODES) + `;
     window.CLUB_BADGES = ` + JSON.stringify(CLUB_BADGES) + `;
+    window.TRANSFERS = ` + JSON.stringify(transfers) + `;
   </script>
 
   <script>
@@ -1198,6 +1244,8 @@ const htmlContent = `<!DOCTYPE html>
             renderValueTable();
           } else if (currentTab === 'mein-kader') {
             renderMeinKaderTable();
+          } else if (currentTab === 'neuzugaenge') {
+            renderTransfersTable();
           }
         });
       });
@@ -1213,6 +1261,8 @@ const htmlContent = `<!DOCTYPE html>
           renderValueTable();
         } else if (currentTab === 'mein-kader') {
           renderMeinKaderTable();
+        } else if (currentTab === 'neuzugaenge') {
+          renderTransfersTable();
         }
       });
       document.getElementById('periodSelector').addEventListener('change', renderMomentumTable);
@@ -1592,11 +1642,19 @@ const htmlContent = `<!DOCTYPE html>
         header.className = 'mobile-card-header';
         var name = document.createElement('div');
         name.className = 'mobile-card-name';
-        name.textContent = p.spieler;
+        if (viewType.indexOf('transfers') === 0) {
+          var nameText = p.spieler;
+          if (viewType === 'transfers-zugaenge' && p.tendenz === 'Aufsteigend') {
+            nameText += ' ▲';
+          }
+          name.textContent = nameText;
+        } else {
+          name.textContent = p.spieler;
+        }
         var club = document.createElement('div');
         club.className = 'mobile-card-club';
-        club.appendChild(makeClubBadge(p.club));
-        club.appendChild(document.createTextNode(p.club));
+        club.appendChild(makeClubBadge(p.club || 'N/A'));
+        club.appendChild(document.createTextNode(p.club || 'N/A'));
         header.appendChild(name);
         header.appendChild(club);
         card.appendChild(header);
@@ -1623,6 +1681,10 @@ const htmlContent = `<!DOCTYPE html>
           addMobileField(fields, 'Punkte/Mio', p.punkteProMio !== null ? p.punkteProMio.toFixed(1).replace('.', ',') : 'N/A', 'numeric');
           addMobileField(fields, 'Punkte/Spiel', p.punkteProSpiel !== null ? p.punkteProSpiel.toFixed(2).replace('.', ',') : 'N/A', 'numeric');
           addMobileField(fields, 'Punkte', p.punkte, 'numeric');
+        } else if (viewType === 'transfers-zugaenge' || viewType === 'transfers-abgaenge') {
+          addMobileField(fields, 'Datum', p.datum, '');
+          addMobileField(fields, 'Pos.', getPositionLabel(p.position), '');
+          addMobileField(fields, 'Marktwert', formatMarktwert(p.marktwert), 'numeric');
         }
 
         card.appendChild(fields);
@@ -1636,10 +1698,17 @@ const htmlContent = `<!DOCTYPE html>
 
         var buttons = document.createElement('div');
         buttons.className = 'mobile-card-buttons';
-        var researchHTML = createResearchButtons(p.spieler, p.club);
-        buttons.innerHTML = researchHTML.replace('research-buttons', 'mobile-card-buttons').replace(/research-btn/g, 'mobile-card-btn');
-        buttons.insertBefore(makeKaderToggle(p, true), buttons.firstChild);
-        card.appendChild(buttons);
+        if (viewType === 'transfers-zugaenge') {
+          var researchHTML = createResearchButtons(p.spieler, p.club || 'N/A');
+          buttons.innerHTML = researchHTML.replace('research-buttons', 'mobile-card-buttons').replace(/research-btn/g, 'mobile-card-btn');
+        } else if (viewType !== 'transfers-abgaenge') {
+          var researchHTML = createResearchButtons(p.spieler, p.club);
+          buttons.innerHTML = researchHTML.replace('research-buttons', 'mobile-card-buttons').replace(/research-btn/g, 'mobile-card-btn');
+          buttons.insertBefore(makeKaderToggle(p, true), buttons.firstChild);
+        }
+        if (buttons.innerHTML) {
+          card.appendChild(buttons);
+        }
 
         grid.appendChild(card);
       });
@@ -1660,6 +1729,156 @@ const htmlContent = `<!DOCTYPE html>
       field.appendChild(labelEl);
       field.appendChild(valueEl);
       container.appendChild(field);
+    }
+
+    function getPositionLabel(position) {
+      if (!position) return '—';
+      var map = {
+        'Torwart': 'TW',
+        'Abwehr': 'ABW',
+        'Mittelfeld': 'MF',
+        'Sturm': 'ST'
+      };
+      return map[position] || '—';
+    }
+
+    function parseDatumDe(datumStr) {
+      if (!datumStr) return new Date(0);
+      var parts = datumStr.split('.');
+      if (parts.length !== 3) return new Date(0);
+      return new Date(parts[2] + '-' + parts[1] + '-' + parts[0]);
+    }
+
+    function renderTransfersTable() {
+      var budgetLimit = getBudgetLimit();
+      var zugaenge = (window.TRANSFERS.zugaenge || []).filter(function(t) {
+        if (!budgetLimit) return true;
+        return t.marktwert && t.marktwert <= budgetLimit;
+      });
+      zugaenge.sort(function(a, b) {
+        var dateA = parseDatumDe(a.datum);
+        var dateB = parseDatumDe(b.datum);
+        if (dateA.getTime() !== dateB.getTime()) {
+          return dateB.getTime() - dateA.getTime();
+        }
+        return (b.marktwert || 0) - (a.marktwert || 0);
+      });
+
+      var abgaenge = (window.TRANSFERS.abgaenge || []);
+      abgaenge.sort(function(a, b) {
+        var dateA = parseDatumDe(a.datum);
+        var dateB = parseDatumDe(b.datum);
+        if (dateA.getTime() !== dateB.getTime()) {
+          return dateB.getTime() - dateA.getTime();
+        }
+        return (b.marktwert || 0) - (a.marktwert || 0);
+      });
+
+      // Render Zugänge table
+      var tBodyZ = document.getElementById('transfersZugaengeTable').querySelector('tbody');
+      tBodyZ.innerHTML = '';
+      if (zugaenge.length === 0) {
+        var tr = document.createElement('tr');
+        var td = document.createElement('td');
+        td.colSpan = '6';
+        td.className = 'empty-state';
+        td.textContent = 'Keine Zugänge im aktuellen Filter.';
+        tr.appendChild(td);
+        tBodyZ.appendChild(tr);
+        document.getElementById('transfersZugaengeStats').textContent = '';
+        renderMobileCards('transfers-zugaenge', zugaenge);
+      } else {
+        zugaenge.forEach(function(t) {
+          var tr = document.createElement('tr');
+
+          var td1 = document.createElement('td');
+          td1.textContent = t.datum;
+          tr.appendChild(td1);
+
+          var td2 = document.createElement('td');
+          var nameSpan = document.createElement('span');
+          nameSpan.textContent = t.spieler;
+          td2.appendChild(nameSpan);
+          if (t.tendenz === 'Aufsteigend') {
+            var trendSpan = document.createElement('span');
+            trendSpan.textContent = ' ▲';
+            trendSpan.title = 'Comunio-Tendenz: Aufsteigend';
+            trendSpan.style.color = 'var(--positive)';
+            trendSpan.style.marginLeft = '4px';
+            td2.appendChild(trendSpan);
+          }
+          tr.appendChild(td2);
+
+          var td3 = document.createElement('td');
+          td3.textContent = getPositionLabel(t.position);
+          td3.title = t.position || 'Unbekannt';
+          tr.appendChild(td3);
+
+          var td4 = document.createElement('td');
+          fillClubCell(td4, t.club || 'N/A');
+          tr.appendChild(td4);
+
+          var td5 = document.createElement('td');
+          td5.className = 'numeric';
+          td5.textContent = formatMarktwert(t.marktwert);
+          tr.appendChild(td5);
+
+          var td6 = document.createElement('td');
+          td6.innerHTML = createResearchButtons(t.spieler, t.club || 'N/A');
+          tr.appendChild(td6);
+
+          tBodyZ.appendChild(tr);
+        });
+        renderMobileCards('transfers-zugaenge', zugaenge);
+        setupTableSorting('transfersZugaengeTable', renderTransfersTable);
+        document.getElementById('transfersZugaengeStats').textContent = 'Zeige ' + zugaenge.length + ' Zugänge' + (budgetLimit ? ' (gefiltert)' : '');
+      }
+
+      // Render Abgänge table
+      var tBodyA = document.getElementById('transfersAbgaengeTable').querySelector('tbody');
+      tBodyA.innerHTML = '';
+      if (abgaenge.length === 0) {
+        var tr2 = document.createElement('tr');
+        var td2 = document.createElement('td');
+        td2.colSpan = '5';
+        td2.className = 'empty-state';
+        td2.textContent = 'Keine Abgänge.';
+        tr2.appendChild(td2);
+        tBodyA.appendChild(tr2);
+        document.getElementById('transfersAbgaengeStats').textContent = '';
+        renderMobileCards('transfers-abgaenge', abgaenge);
+      } else {
+        abgaenge.forEach(function(t) {
+          var tr = document.createElement('tr');
+
+          var td1 = document.createElement('td');
+          td1.textContent = t.datum;
+          tr.appendChild(td1);
+
+          var td2 = document.createElement('td');
+          td2.textContent = t.spieler;
+          tr.appendChild(td2);
+
+          var td3 = document.createElement('td');
+          td3.textContent = getPositionLabel(t.position);
+          td3.title = t.position || 'Unbekannt';
+          tr.appendChild(td3);
+
+          var td4 = document.createElement('td');
+          fillClubCell(td4, t.club || 'N/A');
+          tr.appendChild(td4);
+
+          var td5 = document.createElement('td');
+          td5.className = 'numeric';
+          td5.textContent = formatMarktwert(t.marktwert);
+          tr.appendChild(td5);
+
+          tBodyA.appendChild(tr);
+        });
+        renderMobileCards('transfers-abgaenge', abgaenge);
+        setupTableSorting('transfersAbgaengeTable', renderTransfersTable);
+        document.getElementById('transfersAbgaengeStats').textContent = 'Zeige ' + abgaenge.length + ' Abgänge';
+      }
     }
 
     function renderMomentumTable() {

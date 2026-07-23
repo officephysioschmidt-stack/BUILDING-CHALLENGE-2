@@ -360,6 +360,135 @@ function consolidatePlayers(winnerLoserData, pointsData, goalkeepers) {
 }
 
 /**
+ * Scrape Transfers page (Zugänge and Abgänge)
+ */
+async function scrapeTransfers() {
+  const url = 'https://stats.comunio.de/transfers';
+  console.log(`\n📥 Fetching transfers from ${url}...`);
+
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    console.log('✓ Transfers page loaded\n');
+
+    const $ = load(html);
+    const transfers = { stand: new Date().toISOString(), zugaenge: [], abgaenge: [] };
+
+    // Find h4 headers and their following tables
+    const h4s = $('h4');
+    let zugaengeTableFound = false;
+    let abgaengeTableFound = false;
+
+    h4s.each((idx, h4elem) => {
+      const $h4 = $(h4elem);
+      const text = $h4.text().trim();
+
+      // Look for table following this h4
+      const $nextTable = $h4.nextAll('table').first();
+      if (!$nextTable.length) return;
+
+      if (text.includes('Zugänge') && !zugaengeTableFound) {
+        zugaengeTableFound = true;
+        parseTransferTable($nextTable, $, transfers.zugaenge, 'zugaenge');
+      } else if (text.includes('Abgänge') && !abgaengeTableFound) {
+        abgaengeTableFound = true;
+        parseTransferTable($nextTable, $, transfers.abgaenge, 'abgaenge');
+      }
+    });
+
+    if (!zugaengeTableFound && !abgaengeTableFound) {
+      console.log('⚠ Transfers: tables not found (structure may have changed)');
+      return transfers;
+    }
+
+    console.log(`✓ Transfers scraped: ${transfers.zugaenge.length} new, ${transfers.abgaenge.length} departures\n`);
+
+    // Plausibility check
+    const noClub = transfers.zugaenge.filter(t => !t.club).length + transfers.abgaenge.filter(t => !t.club).length;
+    const noValue = transfers.zugaenge.filter(t => !t.marktwert).length + transfers.abgaenge.filter(t => !t.marktwert).length;
+    console.log(`  Plausibility: ${noClub} entries without club, ${noValue} without market value`);
+
+    return transfers;
+  } catch (error) {
+    console.log(`⚠ Transfers: ${error.message}`);
+    console.log('  Continuing with empty transfers data\n');
+    return { stand: new Date().toISOString(), zugaenge: [], abgaenge: [] };
+  }
+}
+
+/**
+ * Parse a transfer table and populate results array
+ */
+function parseTransferTable($table, $, resultArray, type) {
+  let headerRow = true;
+  let count = 0;
+
+  $table.find('tr').each((rowIdx, row) => {
+    if (headerRow) {
+      headerRow = false;
+      return;
+    }
+
+    const $row = $(row);
+    const tds = $row.find('td');
+    if (tds.length < 5) return;
+
+    // Extract td texts: Datum | (leer) | Spieler | Club | Marktwert
+    const datum = $(tds.eq(0)).text().trim(); // "DD.MM.YYYY"
+    const spieler = $(tds.eq(2)).text().trim();
+    const marktwertStr = $(tds.eq(4)).text().trim();
+
+    if (!spieler) return;
+
+    // Extract position, club, tendenz from img alts
+    const imgs = $row.find('img');
+    let position = null;
+    let club = null;
+    let tendenz = null;
+    const positions = ['Torwart', 'Abwehr', 'Mittelfeld', 'Sturm'];
+    const tendenzen = ['Aufsteigend', 'Trendend'];
+
+    imgs.each((imgIdx, imgElem) => {
+      const alt = $(imgElem).attr('alt') || '';
+      if (!alt) return;
+
+      if (positions.includes(alt)) {
+        position = alt;
+      } else if (tendenzen.includes(alt)) {
+        tendenz = alt;
+      } else if (alt) {
+        // Everything else is club
+        if (!club) club = alt;
+      }
+    });
+
+    const marktwert = parseGermanNumber(marktwertStr);
+
+    if (!datum || !spieler) return;
+
+    resultArray.push({
+      datum: datum,
+      spieler: spieler,
+      position: position,
+      club: club,
+      tendenz: tendenz,
+      marktwert: marktwert,
+    });
+
+    count++;
+  });
+
+  console.log(`  Table (${type}): ${count} rows`);
+}
+
+/**
  * Main function
  */
 async function main() {
@@ -377,6 +506,9 @@ async function main() {
     const goalkeepers = await scrapeGoalkeepers();
     await delay(800);
 
+    const transfers = await scrapeTransfers();
+    await delay(800);
+
     // Consolidate
     const { players, stats } = consolidatePlayers(winnerLoserData, pointsData, goalkeepers);
 
@@ -391,6 +523,12 @@ async function main() {
       JSON.stringify(Object.values(players), null, 2)
     );
 
+    // Save transfers data
+    fs.writeFileSync(
+      'data/transfers.json',
+      JSON.stringify(transfers, null, 2)
+    );
+
     console.log('\n' + '='.repeat(80));
     console.log('✓ Consolidation Complete\n');
     console.log('📊 Statistics:');
@@ -401,6 +539,8 @@ async function main() {
     console.log(`  Points matched to Winner/Loser: ${stats.pointsMatched}`);
     console.log(`  Points unmatched: ${stats.pointsUnmatched.length}`);
     console.log(`  Total consolidated records: ${stats.consolidated}`);
+    console.log(`  Transfers - Zugänge: ${transfers.zugaenge.length}`);
+    console.log(`  Transfers - Abgänge: ${transfers.abgaenge.length}`);
 
     if (stats.pointsUnmatched.length > 0) {
       console.log(`\n  ⚠ Unmatched Points entries (first 5):`);
@@ -422,6 +562,7 @@ async function main() {
     });
 
     console.log(`✓ Saved to data/players.json`);
+    console.log(`✓ Saved to data/transfers.json`);
 
   } catch (error) {
     console.error('❌ Error:', error.message);
