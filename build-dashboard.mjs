@@ -1000,9 +1000,10 @@ const htmlContent = `<!DOCTYPE html>
       <summary>ℹ️ Was bedeuten die Werte?</summary>
       <div class="legend-body">
         <p><strong>Geheimtipp-Score (0–100)</strong> — Mischung aus „Punkte pro Mio" und Marktwert-Momentum, je zur Hälfte. Höher = besserer Kauftipp. Relativ skaliert: der aktuell beste Kandidat hat 100.</p>
+        <p><strong>⚠️ Wichtig:</strong> Der Score kennt keine Transfer-News. Ein Marktwert kann auch <em>wegen</em> Wechselgerüchten steigen — verlässt der Spieler die Liga, ist er weg. Vor dem Kauf kurz den <strong>News</strong>-Button prüfen.</p>
         <p><strong>Marktwert</strong> — aktueller Comunio-Wert des Spielers.</p>
         <p><strong>Punkte/Mio</strong> — Comunio-Punkte je Mio Marktwert. Hoch = viel Leistung fürs Geld.</p>
-        <p><strong>Punkte · Punkte/Spiel · Einsätze</strong> — Saison-Ausbeute (Tab Value-Picks).</p>
+        <p><strong>Punkte · Punkte/Spiel · Einsätze</strong> — Saison-Ausbeute (Tab Preis-Leistung).</p>
         <p><strong>Momentum · Veränderung</strong> — Marktwert-Trend im gewählten Zeitraum. <span class="pos">Grün = steigt</span>, <span class="neg">Rot = fällt</span>.</p>
         <p><strong>⭐ Mein Kader</strong> — Spieler merken; im Tab „Mein Kader" siehst du gebündelt ihren Marktwert-Trend.</p>
       </div>
@@ -1014,13 +1015,13 @@ const htmlContent = `<!DOCTYPE html>
 
     <div id="tabsArea">
       <div class="tabs">
-      <button class="tab-button active" data-tab="geheimtipps">GEHEIMTIPPS</button>
-      <button class="tab-button" data-tab="momentum">MOMENTUM</button>
-      <button class="tab-button" data-tab="value-picks">VALUE-PICKS</button>
+      <button class="tab-button active" data-tab="momentum">MOMENTUM</button>
+      <button class="tab-button" data-tab="geheimtipps">GEHEIMTIPPS</button>
+      <button class="tab-button" data-tab="value-picks">PREIS-LEISTUNG</button>
       <button class="tab-button" data-tab="mein-kader">MEIN KADER <span id="kaderCount">(0)</span></button>
     </div>
 
-    <div id="geheimtipps" class="tab-content active">
+    <div id="geheimtipps" class="tab-content">
       <table id="geheimtippsTable">
         <thead>
           <tr>
@@ -1039,7 +1040,7 @@ const htmlContent = `<!DOCTYPE html>
       <div class="stats-summary" id="geheimtippsStats"></div>
     </div>
 
-    <div id="momentum" class="tab-content">
+    <div id="momentum" class="tab-content active">
       <div class="momentum-controls">
         <label for="periodSelector">Zeitraum:</label>
         <select id="periodSelector">
@@ -1117,7 +1118,7 @@ const htmlContent = `<!DOCTYPE html>
   <script>
     let currentSortColumn = null;
     let currentSortAsc = true;
-    let currentTab = 'geheimtipps';
+    let currentTab = 'momentum';
     let touchStartX = 0;
     let touchStartY = 0;
 
@@ -1126,7 +1127,7 @@ const htmlContent = `<!DOCTYPE html>
       setupFilters();
       setupSwipeGestures();
       setupTooltips();
-      renderGeheimtippsTable();
+      renderMomentumTable();
       updateKaderCount();
     });
 
