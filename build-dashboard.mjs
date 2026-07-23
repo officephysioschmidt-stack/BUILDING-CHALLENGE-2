@@ -1004,6 +1004,12 @@ const htmlContent = `<!DOCTYPE html>
           <option value="vorwoche">Zur Vorwoche</option>
           <option value="vormonat">Zum Vormonat</option>
         </select>
+        <label for="directionSelector">Zeigen:</label>
+        <select id="directionSelector">
+          <option value="alle">Alle</option>
+          <option value="steiger">Nur Steiger</option>
+          <option value="faller">Nur Faller</option>
+        </select>
       </div>
       <table id="momentumTable">
         <thead>
@@ -1165,6 +1171,7 @@ const htmlContent = `<!DOCTYPE html>
         }
       });
       document.getElementById('periodSelector').addEventListener('change', renderMomentumTable);
+      document.getElementById('directionSelector').addEventListener('change', renderMomentumTable);
       document.getElementById('keeperToggle').addEventListener('change', renderValueTable);
       document.getElementById('playerSearch').addEventListener('input', handleSearch);
     }
@@ -1314,6 +1321,11 @@ const htmlContent = `<!DOCTYPE html>
 
     function getPeriod() {
       return document.getElementById('periodSelector').value;
+    }
+
+    function getDirection() {
+      var el = document.getElementById('directionSelector');
+      return el ? el.value : 'alle';
     }
 
     function hideKeepers() {
@@ -1583,13 +1595,20 @@ const htmlContent = `<!DOCTYPE html>
 
     function renderMomentumTable() {
       var period = getPeriod();
+      var direction = getDirection();
       var budgetLimit = getBudgetLimit();
       var filtered = window.PLAYERS.filter(function(p) {
         if (!filterByBudget(p, budgetLimit)) return false;
-        return p.veraenderung && p.veraenderung[period];
+        if (!(p.veraenderung && p.veraenderung[period])) return false;
+        var abs = p.veraenderung[period].abs;
+        if (direction === 'steiger' && !(abs > 0)) return false;
+        if (direction === 'faller' && !(abs < 0)) return false;
+        return true;
       });
       filtered.sort(function(a, b) {
-        return (b.veraenderung[period].abs || 0) - (a.veraenderung[period].abs || 0);
+        var aAbs = a.veraenderung[period].abs || 0;
+        var bAbs = b.veraenderung[period].abs || 0;
+        return direction === 'faller' ? (aAbs - bAbs) : (bAbs - aAbs);
       });
       if (currentSortColumn !== null) {
         filtered.sort(function(a, b) {
