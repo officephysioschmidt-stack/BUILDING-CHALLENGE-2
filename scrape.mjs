@@ -523,11 +523,16 @@ async function main() {
       JSON.stringify(Object.values(players), null, 2)
     );
 
-    // Save transfers data
-    fs.writeFileSync(
-      'data/transfers.json',
-      JSON.stringify(transfers, null, 2)
-    );
+    // Save transfers data — keep previous file if today's scrape came back empty
+    const transfersEmpty = transfers.zugaenge.length === 0 && transfers.abgaenge.length === 0;
+    if (!transfersEmpty || !fs.existsSync('data/transfers.json')) {
+      fs.writeFileSync(
+        'data/transfers.json',
+        JSON.stringify(transfers, null, 2)
+      );
+    } else {
+      console.log('⚠ Transfers empty — keeping previous data/transfers.json');
+    }
 
     console.log('\n' + '='.repeat(80));
     console.log('✓ Consolidation Complete\n');

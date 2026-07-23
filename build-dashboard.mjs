@@ -1155,10 +1155,10 @@ const htmlContent = `<!DOCTYPE html>
   </div>
 
   <script>
-    window.PLAYERS = ` + JSON.stringify(players) + `;
-    window.CLUB_SHORT_CODES = ` + JSON.stringify(CLUB_SHORT_CODES) + `;
-    window.CLUB_BADGES = ` + JSON.stringify(CLUB_BADGES) + `;
-    window.TRANSFERS = ` + JSON.stringify(transfers) + `;
+    window.PLAYERS = ` + JSON.stringify(players).replace(/</g, '\\u003c') + `;
+    window.CLUB_SHORT_CODES = ` + JSON.stringify(CLUB_SHORT_CODES).replace(/</g, '\\u003c') + `;
+    window.CLUB_BADGES = ` + JSON.stringify(CLUB_BADGES).replace(/</g, '\\u003c') + `;
+    window.TRANSFERS = ` + JSON.stringify(transfers).replace(/</g, '\\u003c') + `;
   </script>
 
   <script>
@@ -1495,6 +1495,8 @@ const htmlContent = `<!DOCTYPE html>
 
     function setupTableSorting(tableId, renderFunc) {
       var table = document.getElementById(tableId);
+      if (table.dataset.sortingSetup) return;
+      table.dataset.sortingSetup = '1';
       var headers = table.querySelectorAll('th.sortable');
       headers.forEach(function(th, idx) {
         th.addEventListener('click', function() {
@@ -1753,7 +1755,7 @@ const htmlContent = `<!DOCTYPE html>
       var budgetLimit = getBudgetLimit();
       var zugaenge = (window.TRANSFERS.zugaenge || []).filter(function(t) {
         if (!budgetLimit) return true;
-        return t.marktwert && t.marktwert <= budgetLimit;
+        return t.marktwert !== null && t.marktwert <= budgetLimit;
       });
       zugaenge.sort(function(a, b) {
         var dateA = parseDatumDe(a.datum);
@@ -1773,6 +1775,37 @@ const htmlContent = `<!DOCTYPE html>
         }
         return (b.marktwert || 0) - (a.marktwert || 0);
       });
+
+      function applyColumnSort(list) {
+        if (currentSortColumn === null) return;
+        list.sort(function(a, b) {
+          var aVal, bVal;
+          if (currentSortColumn === 0) {
+            aVal = parseDatumDe(a.datum).getTime();
+            bVal = parseDatumDe(b.datum).getTime();
+          } else if (currentSortColumn === 1) {
+            aVal = a.spieler || '';
+            bVal = b.spieler || '';
+          } else if (currentSortColumn === 2) {
+            aVal = a.position || '';
+            bVal = b.position || '';
+          } else if (currentSortColumn === 3) {
+            aVal = a.club || '';
+            bVal = b.club || '';
+          } else if (currentSortColumn === 4) {
+            aVal = a.marktwert || 0;
+            bVal = b.marktwert || 0;
+          } else {
+            return 0;
+          }
+          if (typeof aVal === 'string') {
+            return currentSortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+          }
+          return currentSortAsc ? (aVal - bVal) : (bVal - aVal);
+        });
+      }
+      applyColumnSort(zugaenge);
+      applyColumnSort(abgaenge);
 
       // Render Zugänge table
       var tBodyZ = document.getElementById('transfersZugaengeTable').querySelector('tbody');
