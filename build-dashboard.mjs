@@ -28,6 +28,31 @@ const CLUB_SHORT_CODES = {
   'VfL Wolfsburg': 'Wolfsburg',
 };
 
+// Club badge: Kürzel + Vereinsfarben (rechtlich sauber statt markengeschützter Wappen)
+const CLUB_BADGES = {
+  '1. FC Heidenheim': { kurz: 'HDH', bg: '#E2001A', fg: '#FFFFFF' },
+  '1. FC Köln': { kurz: 'KOE', bg: '#FFFFFF', fg: '#ED1C24' },
+  '1. FC Union Berlin': { kurz: 'FCU', bg: '#EB1923', fg: '#FFFFFF' },
+  '1. FSV Mainz 05': { kurz: 'M05', bg: '#C3141E', fg: '#FFFFFF' },
+  'Bayer 04 Leverkusen': { kurz: 'B04', bg: '#E32221', fg: '#000000' },
+  'Borussia Dortmund': { kurz: 'BVB', bg: '#FDE100', fg: '#000000' },
+  'Borussia M\'gladbach': { kurz: 'BMG', bg: '#000000', fg: '#FFFFFF' },
+  'Eintracht Frankfurt': { kurz: 'SGE', bg: '#000000', fg: '#E1000F' },
+  'FC Augsburg': { kurz: 'FCA', bg: '#BA3733', fg: '#FFFFFF' },
+  'FC Bayern München': { kurz: 'FCB', bg: '#DC052D', fg: '#FFFFFF' },
+  'FC Schalke 04': { kurz: 'S04', bg: '#004D9D', fg: '#FFFFFF' },
+  'FC St. Pauli': { kurz: 'STP', bg: '#6F4A2D', fg: '#FFFFFF' },
+  'Hamburger SV': { kurz: 'HSV', bg: '#0A3F86', fg: '#FFFFFF' },
+  'RB Leipzig': { kurz: 'RBL', bg: '#DD1740', fg: '#FFFFFF' },
+  'SC Paderborn': { kurz: 'SCP', bg: '#005CA9', fg: '#FFFFFF' },
+  'SV Elversberg': { kurz: 'SVE', bg: '#0E4C92', fg: '#FFFFFF' },
+  'SV Werder Bremen': { kurz: 'SVW', bg: '#1D9053', fg: '#FFFFFF' },
+  'Sport-Club Freiburg': { kurz: 'SCF', bg: '#C8102E', fg: '#FFFFFF' },
+  'TSG Hoffenheim': { kurz: 'TSG', bg: '#1961B5', fg: '#FFFFFF' },
+  'VfB Stuttgart': { kurz: 'VfB', bg: '#FFFFFF', fg: '#DF1119' },
+  'VfL Wolfsburg': { kurz: 'WOB', bg: '#65B32E', fg: '#FFFFFF' },
+};
+
 // Calculate Geheimtipp-Score
 function calculateGeheimtippScore(playersData) {
   const qualifying = playersData.filter(p => {
@@ -933,6 +958,24 @@ const htmlContent = `<!DOCTYPE html>
     .legend-body strong { color: var(--text-primary); }
     .legend-body .pos { color: var(--positive); }
     .legend-body .neg { color: var(--negative); }
+
+    /* Vereins-Badges (Kürzel in Vereinsfarben) */
+    .club-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      height: 20px;
+      padding: 0 5px;
+      margin-right: 7px;
+      border-radius: 5px;
+      font-size: 0.72em;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      vertical-align: middle;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -1068,6 +1111,7 @@ const htmlContent = `<!DOCTYPE html>
   <script>
     window.PLAYERS = ` + JSON.stringify(players) + `;
     window.CLUB_SHORT_CODES = ` + JSON.stringify(CLUB_SHORT_CODES) + `;
+    window.CLUB_BADGES = ` + JSON.stringify(CLUB_BADGES) + `;
   </script>
 
   <script>
@@ -1221,7 +1265,8 @@ const htmlContent = `<!DOCTYPE html>
         name.textContent = p.spieler;
         var club = document.createElement('div');
         club.className = 'card-club';
-        club.textContent = p.club;
+        club.appendChild(makeClubBadge(p.club));
+        club.appendChild(document.createTextNode(p.club));
         header.appendChild(name);
         header.appendChild(club);
         card.appendChild(header);
@@ -1326,6 +1371,28 @@ const htmlContent = `<!DOCTYPE html>
     function getDirection() {
       var el = document.getElementById('directionSelector');
       return el ? el.value : 'alle';
+    }
+
+    function makeClubBadge(club) {
+      var b = window.CLUB_BADGES[club];
+      var span = document.createElement('span');
+      span.className = 'club-badge';
+      if (b) {
+        span.textContent = b.kurz;
+        span.style.background = b.bg;
+        span.style.color = b.fg;
+      } else {
+        span.textContent = club.slice(0, 3).toUpperCase();
+        span.style.background = 'var(--bg-row-alt)';
+        span.style.color = 'var(--text-secondary)';
+      }
+      span.title = club;
+      return span;
+    }
+
+    function fillClubCell(td, club) {
+      td.appendChild(makeClubBadge(club));
+      td.appendChild(document.createTextNode(club));
     }
 
     function hideKeepers() {
@@ -1463,7 +1530,7 @@ const htmlContent = `<!DOCTYPE html>
         td1.textContent = p.spieler;
         tr.appendChild(td1);
         var td2 = document.createElement('td');
-        td2.textContent = p.club;
+        fillClubCell(td2, p.club);
         tr.appendChild(td2);
         var td3 = document.createElement('td');
         td3.className = 'numeric';
@@ -1527,7 +1594,8 @@ const htmlContent = `<!DOCTYPE html>
         name.textContent = p.spieler;
         var club = document.createElement('div');
         club.className = 'mobile-card-club';
-        club.textContent = p.club;
+        club.appendChild(makeClubBadge(p.club));
+        club.appendChild(document.createTextNode(p.club));
         header.appendChild(name);
         header.appendChild(club);
         card.appendChild(header);
@@ -1662,7 +1730,7 @@ const htmlContent = `<!DOCTYPE html>
         td1.textContent = p.spieler;
         tr.appendChild(td1);
         var td2 = document.createElement('td');
-        td2.textContent = p.club;
+        fillClubCell(td2, p.club);
         tr.appendChild(td2);
         var td3 = document.createElement('td');
         td3.className = 'numeric';
@@ -1764,7 +1832,7 @@ const htmlContent = `<!DOCTYPE html>
         td1.textContent = p.spieler;
         tr.appendChild(td1);
         var td2 = document.createElement('td');
-        td2.textContent = p.club;
+        fillClubCell(td2, p.club);
         tr.appendChild(td2);
         var td3 = document.createElement('td');
         td3.className = 'numeric';
