@@ -394,9 +394,11 @@ const htmlContent = `<!DOCTYPE html>
     }
 
     .tab-icon {
-      font-size: 1.15em;
+      font-size: 1.5em;
     }
 
+    /* Desktop: nur Icons (+ Zähler); Wörter erscheinen erst in der Mobile-Ansicht */
+    .tw-long,
     .tw-short {
       display: none;
     }
@@ -1052,11 +1054,11 @@ const htmlContent = `<!DOCTYPE html>
 
     <div id="tabsArea">
       <div class="tabs">
-      <button class="tab-button active" data-tab="momentum" title="Momentum"><span class="tab-icon">🚀</span><span class="tab-word"><span class="tw-long">Momentum</span><span class="tw-short">Trend</span></span></button>
-      <button class="tab-button" data-tab="geheimtipps"><span class="tab-icon">💎</span><span class="tab-word"><span class="tw-long">Geheimtipps</span><span class="tw-short">Tipps</span></span></button>
-      <button class="tab-button" data-tab="value-picks"><span class="tab-icon">💰</span><span class="tab-word"><span class="tw-long">Schnäppchen</span><span class="tw-short">Schnäpp.</span></span></button>
-      <button class="tab-button" data-tab="mein-kader"><span class="tab-icon">⭐</span><span class="tab-word"><span class="tw-long">Mein Kader</span><span class="tw-short">Kader</span> <span id="kaderCount">(0)</span></span></button>
-      <button class="tab-button" data-tab="neuzugaenge"><span class="tab-icon">🆕</span><span class="tab-word"><span class="tw-long">Neuzugänge</span><span class="tw-short">Neu</span> <span id="neuCount">(` + transfers.zugaenge.length + `)</span></span></button>
+      <button class="tab-button active" data-tab="momentum" title="Momentum" aria-label="Momentum"><span class="tab-icon">🚀</span><span class="tab-word"><span class="tw-long">Momentum</span><span class="tw-short">Trend</span></span></button>
+      <button class="tab-button" data-tab="geheimtipps" title="Geheimtipps" aria-label="Geheimtipps"><span class="tab-icon">💎</span><span class="tab-word"><span class="tw-long">Geheimtipps</span><span class="tw-short">Tipps</span></span></button>
+      <button class="tab-button" data-tab="value-picks" title="Schnäppchen" aria-label="Schnäppchen"><span class="tab-icon">💰</span><span class="tab-word"><span class="tw-long">Schnäppchen</span><span class="tw-short">Schnäpp.</span></span></button>
+      <button class="tab-button" data-tab="mein-kader" title="Mein Kader" aria-label="Mein Kader"><span class="tab-icon">⭐</span><span class="tab-word"><span class="tw-long">Mein Kader</span><span class="tw-short">Kader</span> <span id="kaderCount">(0)</span></span></button>
+      <button class="tab-button" data-tab="neuzugaenge" title="Neuzugänge" aria-label="Neuzugänge"><span class="tab-icon">🆕</span><span class="tab-word"><span class="tw-long">Neuzugänge</span><span class="tw-short">Neu</span> <span id="neuCount">(` + transfers.zugaenge.length + `)</span></span></button>
     </div>
 
     <div id="geheimtipps" class="tab-content">
