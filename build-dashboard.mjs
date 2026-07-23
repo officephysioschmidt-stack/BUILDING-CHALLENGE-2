@@ -397,8 +397,6 @@ const htmlContent = `<!DOCTYPE html>
       font-size: 1.5em;
     }
 
-    /* Desktop: nur Icons (+ Zähler); Wörter erscheinen erst in der Mobile-Ansicht */
-    .tw-long,
     .tw-short {
       display: none;
     }
@@ -816,15 +814,13 @@ const htmlContent = `<!DOCTYPE html>
       }
 
       .tab-icon {
-        font-size: 1.8em;
+        font-size: 2em;
       }
 
-      .tw-long {
-        display: none;
-      }
-
+      /* Mobile: nur Icons (+ Zähler) — Wörter komplett aus, Platz fürs Wesentliche */
+      .tw-long,
       .tw-short {
-        display: inline;
+        display: none;
       }
 
       .research-buttons {
