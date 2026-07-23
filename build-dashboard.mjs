@@ -919,7 +919,7 @@ const htmlContent = `<!DOCTYPE html>
     <div class="controls">
       <div class="filter-group">
         <label for="budgetFilter">Max. Marktwert (Mio):</label>
-        <input type="number" id="budgetFilter" placeholder="Leer = kein Limit" min="0" step="0.5">
+        <input type="text" inputmode="decimal" id="budgetFilter" placeholder="Leer = kein Limit">
       </div>
     </div>
 
@@ -1265,8 +1265,9 @@ const htmlContent = `<!DOCTYPE html>
     }
 
     function getBudgetLimit() {
-      var val = document.getElementById('budgetFilter').value;
-      return val ? parseFloat(val) * 1000000 : null;
+      var raw = document.getElementById('budgetFilter').value.replace(',', '.').trim();
+      var num = parseFloat(raw);
+      return isNaN(num) ? null : num * 1000000;
     }
 
     function getPeriod() {
@@ -1403,6 +1404,7 @@ const htmlContent = `<!DOCTYPE html>
         tr.appendChild(td);
         tbody.appendChild(tr);
         document.getElementById('geheimtippsStats').textContent = '';
+        renderMobileCards('geheimtipps', filtered);
         return;
       }
       filtered.forEach(function(p) {
@@ -1452,7 +1454,14 @@ const htmlContent = `<!DOCTYPE html>
       if (!mobileContainer) return;
       mobileContainer.innerHTML = '';
 
-      if (players.length === 0) return;
+      if (players.length === 0) {
+        var none = document.createElement('div');
+        none.className = 'empty-state';
+        none.style.padding = '24px 12px';
+        none.textContent = 'Keine Spieler im aktuellen Filter.';
+        mobileContainer.appendChild(none);
+        return;
+      }
 
       var grid = document.createElement('div');
       grid.className = 'mobile-cards';
@@ -1584,6 +1593,7 @@ const htmlContent = `<!DOCTYPE html>
         tr.appendChild(td);
         tbody.appendChild(tr);
         document.getElementById('momentumStats').textContent = '';
+        renderMobileCards('momentum', filtered);
         return;
       }
       filtered.forEach(function(p) {
@@ -1688,6 +1698,7 @@ const htmlContent = `<!DOCTYPE html>
         tr.appendChild(td);
         tbody.appendChild(tr);
         document.getElementById('valueStats').textContent = '';
+        renderMobileCards('value-picks', filtered);
         return;
       }
       filtered.forEach(function(p) {
