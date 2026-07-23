@@ -1772,7 +1772,10 @@ const htmlContent = `<!DOCTYPE html>
 
     function updateKaderCount() {
       var el = document.getElementById('kaderCount');
-      if (el) el.textContent = '(' + getKader().length + ')';
+      if (!el) return;
+      var kader = getKader();
+      var visible = window.PLAYERS.filter(function(p) { return kader.indexOf(kaderKey(p)) !== -1; }).length;
+      el.textContent = (kader.length === visible) ? '(' + visible + ')' : '(' + visible + '/' + kader.length + ')';
     }
 
     function makeKaderToggle(p, compact) {
@@ -1797,19 +1800,21 @@ const htmlContent = `<!DOCTYPE html>
     function getKaderSignal(p) {
       var wk = (p.veraenderung && p.veraenderung.vorwoche) ? p.veraenderung.vorwoche.prozent : null;
       var dy = (p.veraenderung && p.veraenderung.vortag) ? p.veraenderung.vortag.prozent : null;
-      var trend = wk !== null ? wk : dy;
-      var periode = wk !== null ? 'Woche' : 'Tag';
+      var isWeek = wk !== null;
+      var trend = isWeek ? wk : dy;
+      var periode = isWeek ? 'Woche' : 'Tag';
       if (trend === null) {
         return { text: '– keine Trenddaten', className: 'neutral' };
       }
-      var pct = (trend >= 0 ? '+' : '') + trend + '% / ' + periode;
-      if (trend >= 2) {
-        return { text: '✓ Halten – Marktwert steigt (' + pct + ')', className: 'positive' };
-      }
-      if (trend <= -2) {
-        return { text: '⚠ Verkaufen erwägen – Marktwert fällt (' + pct + ')', className: 'negative' };
-      }
-      return { text: '→ Halten – stabil (' + pct + ')', className: 'neutral' };
+      // Wochentrend akkumuliert über 7 Tage, Tagestrend ist volatiler -> engere Schwellen
+      var strong = isWeek ? 10 : 4;
+      var mild = isWeek ? 3 : 1.5;
+      var pct = '(' + (trend >= 0 ? '+' : '') + trend + '% / ' + periode + ')';
+      if (trend >= strong) { return { text: '▲▲  stark steigend  ' + pct, className: 'positive' }; }
+      if (trend >= mild)   { return { text: '▲  steigend  ' + pct, className: 'positive' }; }
+      if (trend <= -strong){ return { text: '▼▼  stark fallend  ' + pct, className: 'negative' }; }
+      if (trend <= -mild)  { return { text: '▼  fallend  ' + pct, className: 'negative' }; }
+      return { text: '■  stabil  ' + pct, className: 'neutral' };
     }
 
     function renderMeinKaderTable() {
@@ -1821,17 +1826,23 @@ const htmlContent = `<!DOCTYPE html>
       var kaderPlayers = window.PLAYERS.filter(function(p) {
         return kader.indexOf(kaderKey(p)) !== -1;
       });
+      var missing = kader.length - kaderPlayers.length;
 
       if (kaderPlayers.length === 0) {
         grid.innerHTML = '';
         empty.style.display = 'block';
+        empty.innerHTML = (kader.length === 0)
+          ? 'Noch keine Spieler im Kader.<br>Such oben einen Spieler und tippe auf „☆ Zum Kader", um ihn hier zu sammeln.'
+          : 'Deine ' + kader.length + ' markierten Spieler stehen aktuell nicht in den Top-Listen — z. B. Verein gewechselt oder aus der Wertung gefallen. Sie kommen wieder, sobald sie erneut in den Listen auftauchen.';
         stats.textContent = '';
       } else {
         empty.style.display = 'none';
         renderDetailCards(kaderPlayers, 'meinKaderGrid', true);
         var steigt = kaderPlayers.filter(function(p) { return getKaderSignal(p).className === 'positive'; }).length;
         var faellt = kaderPlayers.filter(function(p) { return getKaderSignal(p).className === 'negative'; }).length;
-        stats.textContent = kaderPlayers.length + ' Spieler im Kader · ' + steigt + ' steigen · ' + faellt + ' fallen';
+        var txt = kaderPlayers.length + ' Spieler im Kader · ' + steigt + ' steigen · ' + faellt + ' fallen';
+        if (missing > 0) txt += ' · ' + missing + ' aktuell nicht in den Listen';
+        stats.textContent = txt;
       }
       updateKaderCount();
     }

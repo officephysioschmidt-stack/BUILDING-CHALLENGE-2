@@ -55,8 +55,9 @@ Alles unten ist an einem Bautag (22.07.2026) neu entstanden.
   Budget-Filter, Spielersuche, Mobile-Karten, Tooltips und Deep-Links zu
   Transfermarkt/Recherche.
 - **„Mein Kader"**: eigene Merkliste im Browser (localStorage) — Spieler per ⭐
-  markieren und im Kader-Tab mit einem Halten-/Verkaufen-Hinweis aus dem
-  Marktwert-Trend bündeln.
+  markieren und im Kader-Tab gebündelt sehen, jeweils mit einem neutralen
+  Marktwert-Trend-Indikator (stark steigend … stabil … stark fallend, ohne
+  Kauf-/Verkaufsempfehlung).
 - **Geheimtipp-Score**: eigene Kennzahl aus *Punkte pro Mio Marktwert* × *Momentum*
   (Trend der Vorwoche/Vortag), die günstige, im Wert steigende Spieler hervorhebt.
 
