@@ -384,8 +384,21 @@ const htmlContent = `<!DOCTYPE html>
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 8px;
       white-space: nowrap;
       touch-action: manipulation;
+    }
+
+    .tab-word {
+      text-transform: uppercase;
+    }
+
+    .tab-icon {
+      font-size: 1.15em;
+    }
+
+    .tw-short {
+      display: none;
     }
 
     .tab-button:active {
@@ -786,15 +799,30 @@ const htmlContent = `<!DOCTYPE html>
       }
 
       .tabs {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow-x: hidden;
       }
 
       .tab-button {
-        min-width: 100px;
-        padding: 14px 16px;
-        height: 50px;
-        font-size: 0.85em;
+        min-width: 0;
+        flex: 1 1 0;
+        flex-direction: column;
+        gap: 3px;
+        padding: 8px 2px 10px;
+        height: auto;
+        font-size: 0.62em;
+        letter-spacing: 0.02em;
+      }
+
+      .tab-icon {
+        font-size: 1.8em;
+      }
+
+      .tw-long {
+        display: none;
+      }
+
+      .tw-short {
+        display: inline;
       }
 
       .research-buttons {
@@ -1024,11 +1052,11 @@ const htmlContent = `<!DOCTYPE html>
 
     <div id="tabsArea">
       <div class="tabs">
-      <button class="tab-button active" data-tab="momentum" title="Momentum" aria-label="Momentum">🚀</button>
-      <button class="tab-button" data-tab="geheimtipps">GEHEIMTIPPS</button>
-      <button class="tab-button" data-tab="value-picks">SCHNÄPPCHEN</button>
-      <button class="tab-button" data-tab="mein-kader">MEIN KADER <span id="kaderCount">(0)</span></button>
-      <button class="tab-button" data-tab="neuzugaenge">NEUZUGÄNGE <span id="neuCount">(` + transfers.zugaenge.length + `)</span></button>
+      <button class="tab-button active" data-tab="momentum" title="Momentum"><span class="tab-icon">🚀</span><span class="tab-word"><span class="tw-long">Momentum</span><span class="tw-short">Trend</span></span></button>
+      <button class="tab-button" data-tab="geheimtipps"><span class="tab-icon">💎</span><span class="tab-word"><span class="tw-long">Geheimtipps</span><span class="tw-short">Tipps</span></span></button>
+      <button class="tab-button" data-tab="value-picks"><span class="tab-icon">💰</span><span class="tab-word"><span class="tw-long">Schnäppchen</span><span class="tw-short">Schnäpp.</span></span></button>
+      <button class="tab-button" data-tab="mein-kader"><span class="tab-icon">⭐</span><span class="tab-word"><span class="tw-long">Mein Kader</span><span class="tw-short">Kader</span> <span id="kaderCount">(0)</span></span></button>
+      <button class="tab-button" data-tab="neuzugaenge"><span class="tab-icon">🆕</span><span class="tab-word"><span class="tw-long">Neuzugänge</span><span class="tw-short">Neu</span> <span id="neuCount">(` + transfers.zugaenge.length + `)</span></span></button>
     </div>
 
     <div id="geheimtipps" class="tab-content">
@@ -1232,8 +1260,8 @@ const htmlContent = `<!DOCTYPE html>
           allButtons.forEach(function(b) { b.classList.remove('active'); });
           var allContents = document.querySelectorAll('.tab-content');
           allContents.forEach(function(c) { c.classList.remove('active'); });
-          currentTab = e.target.getAttribute('data-tab');
-          e.target.classList.add('active');
+          currentTab = btn.getAttribute('data-tab');
+          btn.classList.add('active');
           document.getElementById(currentTab).classList.add('active');
           currentSortColumn = null;
           if (currentTab === 'geheimtipps') {
