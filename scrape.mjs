@@ -778,7 +778,10 @@ SELECT DISTINCT ?playerLabel ?clubLabel WHERE {
     const clubTokens = (s) => norm(s).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
       .filter(t => t.length > 2 && !['fc', 'sv', 'vfb', 'vfl', 'tsg', 'borussia'].includes(t));
     const clubMatch = (a, b) => { const ta = clubTokens(a), tb = clubTokens(b); return ta.some(t => tb.includes(t)); };
-    const asciiSafe = (name) => !/[äöüßÄÖÜ]/.test(name) && /^[\x00-\x7f]*$/.test(norm(name));
+    // Only emit a kicker slug for names that are already pure ASCII in the raw
+    // form. kicker's transliteration of ANY diacritic (ä, but also š/ć/í/ã/ū)
+    // is unverifiable (bot-blocked), so a guessed slug could 404 silently.
+    const asciiSafe = (name) => /^[\x00-\x7f]+$/.test(name);
     const toSlug = (name) => norm(name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
     const wd = {};
@@ -864,6 +867,19 @@ async function main() {
       console.log('⚠ Kader empty — keeping previous data/kader.json');
     }
 
+    // Use the kader that actually persisted on disk: if today's squad scrape
+    // came back empty we kept yesterday's file, so history + full-name matching
+    // should read that instead of the empty in-memory result.
+    let effectiveKader = kader;
+    if (kaderEmpty && fs.existsSync('data/kader.json')) {
+      try {
+        effectiveKader = JSON.parse(fs.readFileSync('data/kader.json', 'utf-8'));
+        if (!effectiveKader.spieler) effectiveKader.spieler = [];
+      } catch (e) {
+        effectiveKader = kader;
+      }
+    }
+
     // Daily market value snapshot for trend history.
     // Written to history/ (NOT gitignored) — the daily CI run commits it,
     // building a real per-player market value time series over the season.
@@ -872,7 +888,7 @@ async function main() {
     }
     const today = new Date().toISOString().slice(0, 10);
     const snapshot = {};
-    for (const p of kader.spieler) {
+    for (const p of effectiveKader.spieler) {
       if (p.marktwert !== null) snapshot[`${p.spieler}|${p.club}`] = p.marktwert;
     }
     for (const p of Object.values(players)) {
@@ -896,7 +912,7 @@ async function main() {
     // Wikidata full names + kicker slugs — match against top-list players and
     // the full squad. Keep previous file if the query came back empty.
     await delay(800);
-    const fullnamesTargets = Object.values(players).concat(kader.spieler);
+    const fullnamesTargets = Object.values(players).concat(effectiveKader.spieler);
     const fullnamesMap = await scrapeFullNames(fullnamesTargets);
     const fullnamesEmpty = Object.keys(fullnamesMap).length === 0;
     if (!fullnamesEmpty || !fs.existsSync('data/fullnames.json')) {

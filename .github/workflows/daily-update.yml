@@ -33,6 +33,8 @@ jobs:
         run: node build-dashboard.mjs
 
       - name: Commit market-value history snapshot
+        # A history push must never block the production deploy below.
+        continue-on-error: true
         run: |
           git config user.name "comunio-scout-bot"
           git config user.email "actions@github.com"
