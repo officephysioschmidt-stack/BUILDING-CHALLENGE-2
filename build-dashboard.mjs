@@ -1235,7 +1235,7 @@ const htmlContent = `<!DOCTYPE html>
     </div>
 
     <div id="neuzugaenge" class="tab-content">
-      <p style="margin: 0 0 14px 0; font-size: 0.9em;"><a href="https://www.kicker.de/fussball/transfermarkt" target="_blank" rel="noopener" style="color: var(--accent);">Transfer-Ticker bei kicker öffnen ↗</a> — alle aktuellen Wechsel und Gerüchte der Liga.</p>
+      <p style="margin: 0 0 14px 0; font-size: 0.9em;">Ganze Liga im Blick: <a href="https://www.kicker.de/fussball/transfermarkt" target="_blank" rel="noopener" style="color: var(--accent);">kicker Transfer-Ticker ↗</a> · <a href="https://www.transfermarkt.de/1-bundesliga/transfers/wettbewerb/L1" target="_blank" rel="noopener" style="color: var(--accent);">Transfermarkt Bundesliga ↗</a> — alle aktuellen Wechsel und Gerüchte.</p>
       <h3 style="padding: 0 0 16px 0; border-bottom: 1px solid var(--border); color: var(--accent); margin-bottom: 20px;">Zugänge — neu in der Liga</h3>
       <table id="transfersZugaengeTable">
         <thead>

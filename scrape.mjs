@@ -755,7 +755,7 @@ SELECT DISTINCT ?playerLabel ?clubLabel WHERE {
   ?st ps:P54 ?club .
   FILTER NOT EXISTS { ?st pq:P582 ?end }
   ?player wdt:P569 ?dob .
-  FILTER(YEAR(?dob) >= 1995)
+  FILTER(YEAR(?dob) >= 1987)
   SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". }
 }`;
   try {
