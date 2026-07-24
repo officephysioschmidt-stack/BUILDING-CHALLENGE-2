@@ -257,6 +257,13 @@ const htmlContent = `<!DOCTYPE html>
       opacity: 0.9;
     }
 
+    .header-links a {
+      color: white;
+      text-decoration: underline;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
     .controls {
       padding: 20px;
       background: var(--bg-row-alt);
@@ -1103,7 +1110,7 @@ const htmlContent = `<!DOCTYPE html>
   <div class="container">
     <header>
       <h1>Comunio-Scout</h1>
-      <p>Daten: stats.comunio.de</p>
+      <p class="header-links"><a href="https://www.kicker.de/fussball/transfermarkt" target="_blank" rel="noopener">kicker Transfer-Ticker ↗</a> · <a href="https://www.ligainsider.de/" target="_blank" rel="noopener">LigaInsider ↗</a></p>
     </header>
 
     <div class="search-section">
@@ -1132,6 +1139,7 @@ const htmlContent = `<!DOCTYPE html>
         <p><strong>Suche</strong> — Die Suche kennt den kompletten Liga-Kader (auch Spieler ohne Top-Listen-Platz — dort fehlen dann Trend-Daten).</p>
         <p><strong>Recherche-Buttons</strong> — <strong>News</strong> (Google News, letzte 24 h), <strong>kicker</strong> (direkte Spielerseite, wo der Name bekannt ist) und <strong>TM</strong> (Transfermarkt-Schnellsuche).</p>
         <p><strong>Neuzugänge</strong> — Spieler, die Comunio neu in die Liga aufgenommen hat — oft noch günstig, früh beobachten. Abgänge sind aus der Liga entfernt.</p>
+        <p style="opacity: 0.7; margin-top: 12px;">Datenquelle: stats.comunio.de · Namen: Wikidata · Links: kicker, LigaInsider, Transfermarkt.</p>
       </div>
     </details>
 
@@ -1235,7 +1243,6 @@ const htmlContent = `<!DOCTYPE html>
     </div>
 
     <div id="neuzugaenge" class="tab-content">
-      <p style="margin: 0 0 14px 0; font-size: 0.9em;">Ganze Liga im Blick: <a href="https://www.kicker.de/fussball/transfermarkt" target="_blank" rel="noopener" style="color: var(--accent);">kicker Transfer-Ticker ↗</a> · <a href="https://www.transfermarkt.de/1-bundesliga/transfers/wettbewerb/L1" target="_blank" rel="noopener" style="color: var(--accent);">Transfermarkt Bundesliga ↗</a> — alle aktuellen Wechsel und Gerüchte.</p>
       <h3 style="padding: 0 0 16px 0; border-bottom: 1px solid var(--border); color: var(--accent); margin-bottom: 20px;">Zugänge — neu in der Liga</h3>
       <table id="transfersZugaengeTable">
         <thead>
