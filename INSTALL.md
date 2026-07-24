@@ -41,6 +41,12 @@ Daten eingebettet und funktioniert auch offline.
    - `transfers.json` — Zu- und Abgänge der Liga von `/transfers`
    - `news.json` — Transfer-Schlagzeilen-Zähler pro Top-Listen-Spieler via
      Google-News-RSS (`intitle:<Nachname>`-Query, letzte 3 Tage)
+   - `fullnames.json` — Vollnamen aktueller Bundesliga-Spieler aus Wikidata
+     (SPARQL), per Nachname+Verein eindeutig zugeordnet — schärft die
+     News-Suche und schaltet direkte kicker-Spielerseiten frei
+   - zusätzlich: `history/YYYY-MM-DD.json` — täglicher Marktwert-Snapshot
+     (nicht in `data/`, sondern in `history/`, weil er versioniert bleibt und
+     über die Saison eine echte Trendkurve ergibt)
 
 2. **`build-dashboard.mjs`** liest alle vier Dateien, berechnet den Geheimtipp-Score
    und schreibt `dashboard/index.html` (~220 KB, alle Daten inline). Bricht bewusst

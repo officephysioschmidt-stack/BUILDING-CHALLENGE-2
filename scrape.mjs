@@ -738,6 +738,75 @@ async function scrapeNews(playerList) {
   }
 }
 
+/**
+ * Fetch current Bundesliga player full names from Wikidata (SPARQL), then map
+ * them onto our scraped players by surname (+ club preference). Returns
+ * { "<spieler>|<club>": { full, slug } } only for UNAMBIGUOUS matches.
+ * slug (kicker player page) is set only when the full name is pure ASCII —
+ * kicker's umlaut transliteration is unverifiable (bot-blocked), so ä/ö/ü
+ * names keep the always-working News/TM links instead of a guessed slug.
+ */
+async function scrapeFullNames(playerList) {
+  console.log(`\n📥 Fetching Bundesliga full names from Wikidata...`);
+  const query = `
+SELECT DISTINCT ?playerLabel ?clubLabel WHERE {
+  ?club wdt:P118 wd:Q82595 .
+  ?player p:P54 ?st .
+  ?st ps:P54 ?club .
+  FILTER NOT EXISTS { ?st pq:P582 ?end }
+  ?player wdt:P569 ?dob .
+  FILTER(YEAR(?dob) >= 1995)
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". }
+}`;
+  try {
+    const url = 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(query);
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'ComunioScout/1.0 (github officephysioschmidt-stack)',
+        'Accept': 'application/sparql-results+json',
+      },
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) {
+      console.log(`⚠ Wikidata HTTP ${res.status} — continuing without full names\n`);
+      return {};
+    }
+    const rows = (await res.json()).results.bindings.map(r => ({ name: r.playerLabel.value, club: r.clubLabel.value }));
+
+    const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const lastOf = (s) => norm(s).split(/[ -]/).pop();
+    const clubTokens = (s) => norm(s).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+      .filter(t => t.length > 2 && !['fc', 'sv', 'vfb', 'vfl', 'tsg', 'borussia'].includes(t));
+    const clubMatch = (a, b) => { const ta = clubTokens(a), tb = clubTokens(b); return ta.some(t => tb.includes(t)); };
+    const asciiSafe = (name) => !/[äöüßÄÖÜ]/.test(name) && /^[\x00-\x7f]*$/.test(norm(name));
+    const toSlug = (name) => norm(name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+    const wd = {};
+    for (const r of rows) { const ln = lastOf(r.name); (wd[ln] = wd[ln] || []).push(r); }
+
+    const map = {};
+    let withSlug = 0;
+    for (const p of playerList) {
+      const ln = lastOf(p.spieler);
+      const bucket = wd[ln] || [];
+      const clubHits = bucket.filter(c => clubMatch(c.club, p.club));
+      const chosen = clubHits.length ? clubHits : bucket;
+      const uniqueNames = [...new Set(chosen.map(c => c.name))];
+      if (uniqueNames.length === 1) {
+        const full = uniqueNames[0];
+        const entry = { full: full };
+        if (asciiSafe(full)) { entry.slug = toSlug(full); withSlug++; }
+        map[`${p.spieler}|${p.club}`] = entry;
+      }
+    }
+    console.log(`✓ Full names: ${Object.keys(map).length} matched (${withSlug} with kicker slug) from ${rows.length} Wikidata rows\n`);
+    return map;
+  } catch (error) {
+    console.log(`⚠ Wikidata full names failed: ${error.message} — continuing without\n`);
+    return {};
+  }
+}
+
 async function main() {
   try {
     console.log('🚀 Starting Comunio Scraper\n');
@@ -822,6 +891,21 @@ async function main() {
       );
     } else {
       console.log('⚠ News empty — keeping previous data/news.json');
+    }
+
+    // Wikidata full names + kicker slugs — match against top-list players and
+    // the full squad. Keep previous file if the query came back empty.
+    await delay(800);
+    const fullnamesTargets = Object.values(players).concat(kader.spieler);
+    const fullnamesMap = await scrapeFullNames(fullnamesTargets);
+    const fullnamesEmpty = Object.keys(fullnamesMap).length === 0;
+    if (!fullnamesEmpty || !fs.existsSync('data/fullnames.json')) {
+      fs.writeFileSync(
+        'data/fullnames.json',
+        JSON.stringify({ stand: new Date().toISOString(), map: fullnamesMap }, null, 2)
+      );
+    } else {
+      console.log('⚠ Full names empty — keeping previous data/fullnames.json');
     }
 
     console.log('\n' + '='.repeat(80));

@@ -65,6 +65,15 @@ try {
   history = {};
 }
 
+// Read Wikidata full names + kicker slugs (optional).
+let fullnames = {};
+try {
+  const fnData = JSON.parse(fs.readFileSync('data/fullnames.json', 'utf-8'));
+  fullnames = fnData.map || {};
+} catch (e) {
+  fullnames = {};
+}
+
 // Club name to short code mapping for Transfermarkt precision links
 const CLUB_SHORT_CODES = {
   '1. FC Heidenheim': 'Heidenheim',
@@ -1121,6 +1130,7 @@ const htmlContent = `<!DOCTYPE html>
         <p><strong>Verlauf (Sparkline)</strong> — Marktwert-Kurve der letzten Tage aus dem täglichen Snapshot (erscheint auf der Detailkarte, sobald mindestens 2 Tage vorliegen). <span class="pos">Grün = insgesamt gestiegen</span>, <span class="neg">Rot = gefallen</span>.</p>
         <p><strong>⭐ Mein Kader</strong> — Spieler merken; im Tab „Mein Kader" siehst du gebündelt ihren Marktwert-Trend.</p>
         <p><strong>Suche</strong> — Die Suche kennt den kompletten Liga-Kader (auch Spieler ohne Top-Listen-Platz — dort fehlen dann Trend-Daten).</p>
+        <p><strong>Recherche-Buttons</strong> — <strong>News</strong> (Google News, letzte 24 h), <strong>kicker</strong> (direkte Spielerseite, wo der Name bekannt ist) und <strong>TM</strong> (Transfermarkt-Schnellsuche).</p>
         <p><strong>Neuzugänge</strong> — Spieler, die Comunio neu in die Liga aufgenommen hat — oft noch günstig, früh beobachten. Abgänge sind aus der Liga entfernt.</p>
       </div>
     </details>
@@ -1267,6 +1277,7 @@ const htmlContent = `<!DOCTYPE html>
     window.KADER = ` + JSON.stringify(kader).replace(/</g, '\\u003c') + `;
     window.NEWS = ` + JSON.stringify(newsData.news).replace(/</g, '\\u003c') + `;
     window.HISTORY = ` + JSON.stringify(history).replace(/</g, '\\u003c') + `;
+    window.FULLNAMES = ` + JSON.stringify(fullnames).replace(/</g, '\\u003c') + `;
     window.CLUB_SHORT_CODES = ` + JSON.stringify(CLUB_SHORT_CODES).replace(/</g, '\\u003c') + `;
     window.CLUB_BADGES = ` + JSON.stringify(CLUB_BADGES).replace(/</g, '\\u003c') + `;
     window.TRANSFERS = ` + JSON.stringify(transfers).replace(/</g, '\\u003c') + `;
@@ -1750,12 +1761,20 @@ const htmlContent = `<!DOCTYPE html>
       var lastName = getLastNameFromFull(spieler);
       var clubShort = window.CLUB_SHORT_CODES[club] || club;
 
-      var newsQuery = encodeURIComponent(lastName + ' ' + club);
+      // Full name from Wikidata (if known) sharpens the news query and unlocks
+      // a direct kicker player page. slug is pre-validated ASCII at build time.
+      var fn = window.FULLNAMES && window.FULLNAMES[spieler + '|' + club];
+      var newsTerm = (fn && fn.full) ? fn.full : (lastName + ' ' + club);
+
+      var newsQuery = encodeURIComponent(newsTerm);
       var tmQuery = encodeURIComponent(lastName + ':' + clubShort);
 
       var html = '<div class="research-buttons">';
-      html += '<a href="https://www.google.com/search?q=' + newsQuery + '&tbm=nws&tbs=qdr:d" target="_blank" class="research-btn">News</a>';
-      html += '<a href="https://www.transfermarkt.de/schnellsuche/ergebnis/schnellsuche?query=' + tmQuery + '" target="_blank" class="research-btn">TM</a>';
+      html += '<a href="https://www.google.com/search?q=' + newsQuery + '&tbm=nws&tbs=qdr:d" target="_blank" rel="noopener" class="research-btn">News</a>';
+      if (fn && fn.slug) {
+        html += '<a href="https://www.kicker.de/' + fn.slug + '/spieler-news" target="_blank" rel="noopener" class="research-btn">kicker</a>';
+      }
+      html += '<a href="https://www.transfermarkt.de/schnellsuche/ergebnis/schnellsuche?query=' + tmQuery + '" target="_blank" rel="noopener" class="research-btn">TM</a>';
       html += '</div>';
       return html;
     }
