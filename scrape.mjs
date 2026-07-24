@@ -788,8 +788,9 @@ SELECT DISTINCT ?playerLabel ?clubLabel WHERE {
     for (const r of rows) { const ln = lastOf(r.name); (wd[ln] = wd[ln] || []).push(r); }
 
     const map = {};
-    let withSlug = 0;
     for (const p of playerList) {
+      const key = `${p.spieler}|${p.club}`;
+      if (map[key]) continue; // playerList mixes top-list + squad; skip duplicates
       const ln = lastOf(p.spieler);
       const bucket = wd[ln] || [];
       const clubHits = bucket.filter(c => clubMatch(c.club, p.club));
@@ -798,10 +799,11 @@ SELECT DISTINCT ?playerLabel ?clubLabel WHERE {
       if (uniqueNames.length === 1) {
         const full = uniqueNames[0];
         const entry = { full: full };
-        if (asciiSafe(full)) { entry.slug = toSlug(full); withSlug++; }
-        map[`${p.spieler}|${p.club}`] = entry;
+        if (asciiSafe(full)) entry.slug = toSlug(full);
+        map[key] = entry;
       }
     }
+    const withSlug = Object.values(map).filter(e => e.slug).length;
     console.log(`✓ Full names: ${Object.keys(map).length} matched (${withSlug} with kicker slug) from ${rows.length} Wikidata rows\n`);
     return map;
   } catch (error) {
