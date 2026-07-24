@@ -36,6 +36,35 @@ try {
   newsData = { news: {} };
 }
 
+// Read market-value history snapshots (history/YYYY-MM-DD.json, committed daily).
+// Build a per-player time series: "spieler|club" -> [{d, v}, ...] sorted by date.
+// Keep only the last 60 days to bound embed size.
+let history = {};
+try {
+  const files = fs.readdirSync('history')
+    .filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f))
+    .sort()
+    .slice(-60);
+  const series = {};
+  for (const f of files) {
+    const date = f.slice(0, 10);
+    let snap;
+    try {
+      snap = JSON.parse(fs.readFileSync('history/' + f, 'utf-8'));
+    } catch (e) {
+      continue;
+    }
+    for (const key in snap) {
+      if (!series[key]) series[key] = [];
+      series[key].push({ d: date, v: snap[key] });
+    }
+  }
+  history = series;
+  console.log(`✓ History: ${files.length} snapshots, ${Object.keys(series).length} players`);
+} catch (e) {
+  history = {};
+}
+
 // Club name to short code mapping for Transfermarkt precision links
 const CLUB_SHORT_CODES = {
   '1. FC Heidenheim': 'Heidenheim',
@@ -443,6 +472,11 @@ const htmlContent = `<!DOCTYPE html>
     .news-marker {
       cursor: help;
       font-size: 0.85em;
+    }
+
+    .sparkline {
+      display: block;
+      margin-top: 2px;
     }
 
     .tab-button:active {
@@ -1084,6 +1118,7 @@ const htmlContent = `<!DOCTYPE html>
         <p><strong>Punkte · Punkte/Spiel · Einsätze</strong> — Saison-Ausbeute (Tab Schnäppchen).</p>
         <p><strong>🚀 Momentum · Veränderung</strong> — Marktwert-Trend im gewählten Zeitraum (Tab 🚀). <span class="pos">Grün = steigt</span>, <span class="neg">Rot = fällt</span>.</p>
         <p><strong>📰 News-Marker</strong> — mindestens 3 Transfer-Schlagzeilen zu diesem Spieler in den letzten 3 Tagen (Google News). Marktwert-Sprünge haben oft hier ihre Ursache — Finger drauf/Maus drüber zeigt die neueste Schlagzeile.</p>
+        <p><strong>Verlauf (Sparkline)</strong> — Marktwert-Kurve der letzten Tage aus dem täglichen Snapshot (erscheint auf der Detailkarte, sobald mindestens 2 Tage vorliegen). <span class="pos">Grün = insgesamt gestiegen</span>, <span class="neg">Rot = gefallen</span>.</p>
         <p><strong>⭐ Mein Kader</strong> — Spieler merken; im Tab „Mein Kader" siehst du gebündelt ihren Marktwert-Trend.</p>
         <p><strong>Suche</strong> — Die Suche kennt den kompletten Liga-Kader (auch Spieler ohne Top-Listen-Platz — dort fehlen dann Trend-Daten).</p>
         <p><strong>Neuzugänge</strong> — Spieler, die Comunio neu in die Liga aufgenommen hat — oft noch günstig, früh beobachten. Abgänge sind aus der Liga entfernt.</p>
@@ -1231,6 +1266,7 @@ const htmlContent = `<!DOCTYPE html>
     window.PLAYERS = ` + JSON.stringify(players).replace(/</g, '\\u003c') + `;
     window.KADER = ` + JSON.stringify(kader).replace(/</g, '\\u003c') + `;
     window.NEWS = ` + JSON.stringify(newsData.news).replace(/</g, '\\u003c') + `;
+    window.HISTORY = ` + JSON.stringify(history).replace(/</g, '\\u003c') + `;
     window.CLUB_SHORT_CODES = ` + JSON.stringify(CLUB_SHORT_CODES).replace(/</g, '\\u003c') + `;
     window.CLUB_BADGES = ` + JSON.stringify(CLUB_BADGES).replace(/</g, '\\u003c') + `;
     window.TRANSFERS = ` + JSON.stringify(transfers).replace(/</g, '\\u003c') + `;
@@ -1458,6 +1494,58 @@ const htmlContent = `<!DOCTYPE html>
       return marker;
     }
 
+    // Inline SVG sparkline of a player's market value over the last snapshots.
+    // Built via createElementNS (no innerHTML) so it stays XSS-safe.
+    function makeSparkline(p) {
+      var s = window.HISTORY && window.HISTORY[p.spieler + '|' + p.club];
+      if (!s || s.length < 2) return null;
+
+      var vals = s.map(function(pt) { return pt.v; });
+      var min = Math.min.apply(null, vals);
+      var max = Math.max.apply(null, vals);
+      var W = 150, H = 34, PAD = 3;
+      var span = (max - min) || 1;
+      var n = vals.length;
+      var pts = vals.map(function(v, i) {
+        var x = PAD + (i / (n - 1)) * (W - 2 * PAD);
+        var y = H - PAD - ((v - min) / span) * (H - 2 * PAD);
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+
+      var up = vals[n - 1] >= vals[0];
+      var color = up ? 'var(--positive)' : 'var(--negative)';
+      var NS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+      svg.setAttribute('width', W);
+      svg.setAttribute('height', H);
+      svg.setAttribute('class', 'sparkline');
+      var poly = document.createElementNS(NS, 'polyline');
+      poly.setAttribute('points', pts);
+      poly.setAttribute('fill', 'none');
+      poly.setAttribute('stroke', color);
+      poly.setAttribute('stroke-width', '1.5');
+      poly.setAttribute('stroke-linejoin', 'round');
+      poly.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(poly);
+      var last = document.createElementNS(NS, 'circle');
+      var lastPt = pts.split(' ').pop().split(',');
+      last.setAttribute('cx', lastPt[0]);
+      last.setAttribute('cy', lastPt[1]);
+      last.setAttribute('r', '2');
+      last.setAttribute('fill', color);
+      svg.appendChild(last);
+
+      var wrap = document.createElement('div');
+      wrap.className = 'card-field';
+      var label = document.createElement('div');
+      label.className = 'card-field-label';
+      label.textContent = 'Verlauf (' + n + ' Tage)';
+      wrap.appendChild(label);
+      wrap.appendChild(svg);
+      return wrap;
+    }
+
     function renderDetailCards(players, gridId, showSignal) {
       var grid = document.getElementById(gridId || 'searchResultsGrid');
       grid.innerHTML = '';
@@ -1547,6 +1635,9 @@ const htmlContent = `<!DOCTYPE html>
         }
 
         fields.appendChild(createCardField('Torhüter', String(p.istTorhueter ? 'Ja' : 'Nein')));
+
+        var spark = makeSparkline(p);
+        if (spark) fields.appendChild(spark);
 
         card.appendChild(fields);
 

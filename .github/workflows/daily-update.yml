@@ -9,6 +9,10 @@ on:
     - cron: "42 5 * * *"
   workflow_dispatch:
 
+# Needed so the daily market-value snapshot can be committed back to the repo.
+permissions:
+  contents: write
+
 jobs:
   scrape-build-deploy:
     runs-on: ubuntu-latest
@@ -27,6 +31,18 @@ jobs:
 
       - name: Build dashboard
         run: node build-dashboard.mjs
+
+      - name: Commit market-value history snapshot
+        run: |
+          git config user.name "comunio-scout-bot"
+          git config user.email "actions@github.com"
+          git add history/
+          if git diff --staged --quiet; then
+            echo "No history change to commit."
+          else
+            git commit -m "chore: market value snapshot $(date -u +%Y-%m-%d)"
+            git push
+          fi
 
       - name: Deploy to Cloudflare Pages (Production)
         run: npx wrangler pages deploy dashboard --project-name=comunio-scout --branch=main

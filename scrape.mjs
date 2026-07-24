@@ -795,6 +795,23 @@ async function main() {
       console.log('⚠ Kader empty — keeping previous data/kader.json');
     }
 
+    // Daily market value snapshot for trend history.
+    // Written to history/ (NOT gitignored) — the daily CI run commits it,
+    // building a real per-player market value time series over the season.
+    if (!fs.existsSync('history')) {
+      fs.mkdirSync('history');
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const snapshot = {};
+    for (const p of kader.spieler) {
+      if (p.marktwert !== null) snapshot[`${p.spieler}|${p.club}`] = p.marktwert;
+    }
+    for (const p of Object.values(players)) {
+      if (p.marktwert !== null) snapshot[`${p.spieler}|${p.club}`] = p.marktwert;
+    }
+    fs.writeFileSync(`history/${today}.json`, JSON.stringify(snapshot));
+    console.log(`✓ History snapshot: history/${today}.json (${Object.keys(snapshot).length} players)`);
+
     // Transfer news markers — keep previous file if scrape came back empty
     const news = await scrapeNews(Object.values(players));
     const newsEmpty = Object.keys(news).length === 0;
